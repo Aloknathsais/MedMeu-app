@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, 'Segoe UI', sans-serif; }
+ion-content { --background: #F0F6FA; }
+
+/* Toolbar blue everywhere */
+ion-header ion-toolbar { --background: var(--medmeu-blue); --color: white; }
+ion-back-button { --color: white; }
+ion-title { --color: white; font-weight: 700; }
+
+/* Tab bar */
+ion-tab-bar {
+  --background: white;
+  --border: 1px solid #eee;
+  height: 58px;
+  box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+}
+ion-tab-button {
+  --color: #aaa;
+  --color-selected: var(--medmeu-blue);
+  font-size: 11px;
+}
+ion-tab-button.tab-selected ion-icon { color: var(--medmeu-blue); }
+
+/* Buttons default to blue, CTA buttons to orange */
+ion-button { --background: var(--medmeu-blue); }
+ion-button.orange { --background: var(--medmeu-orange); }
+
+/* Chips */
+ion-chip { --background: #eee; }
+
+.price { font-weight: 800; }
+.original-price { text-decoration: line-through; color: #999; }
