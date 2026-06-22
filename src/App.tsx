@@ -14,7 +14,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import SplashScreen from './pages/Auth/SplashScreen';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
-// import HomePage from './pages/Home/HomePage';
+import HomePage from './pages/Home/HomePage';
 // import ProductsPage from './pages/Products/ProductsPage';
 // import ProductDetailPage from './pages/Products/ProductDetailPage';
 // import CartPage from './pages/Cart/CartPage';
@@ -36,8 +36,8 @@ const TabsLayout: React.FC = () => {
   return (
     <IonTabs>
       <IonRouterOutlet>
-        {/** 
         <Route exact path="/tabs/home"     component={HomePage} />
+        {/** 
         <Route exact path="/tabs/products" component={ProductsPage} />
         <Route exact path="/tabs/cart"     component={CartPage} />
         <Route exact path="/tabs/orders"   component={OrdersPage} />
