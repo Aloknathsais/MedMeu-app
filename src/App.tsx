@@ -14,11 +14,11 @@ import { AppProvider, useApp } from './context/AppContext';
 import SplashScreen from './pages/Auth/SplashScreen';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
-import HomePage from './pages/Home/HomePage';
-import ProductsPage from './pages/Products/ProductsPage';
-import ProductDetailPage from './pages/Products/ProductDetailPage';
-import CartPage from './pages/Cart/CartPage';
-import OrdersPage from './pages/Orders/OrdersPage';
+// import HomePage from './pages/Home/HomePage';
+// import ProductsPage from './pages/Products/ProductsPage';
+// import ProductDetailPage from './pages/Products/ProductDetailPage';
+// import CartPage from './pages/Cart/CartPage';
+// import OrdersPage from './pages/Orders/OrdersPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import WishlistPage from './pages/Profile/WishlistPage';
 
@@ -36,10 +36,12 @@ const TabsLayout: React.FC = () => {
   return (
     <IonTabs>
       <IonRouterOutlet>
+        {/** 
         <Route exact path="/tabs/home"     component={HomePage} />
         <Route exact path="/tabs/products" component={ProductsPage} />
         <Route exact path="/tabs/cart"     component={CartPage} />
         <Route exact path="/tabs/orders"   component={OrdersPage} />
+        */}
         <Route exact path="/tabs/profile"  component={ProfilePage} />
         <Redirect exact from="/tabs" to="/tabs/home" />
       </IonRouterOutlet>
@@ -95,7 +97,7 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/login"     component={LoginPage} />
         <Route exact path="/register"  component={RegisterPage} />
         <Route exact path="/wishlist"  component={WishlistPage} />
-        <Route exact path="/product/:id" component={ProductDetailPage} />
+        {/* <Route exact path="/product/:id" component={ProductDetailPage} /> */}
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
