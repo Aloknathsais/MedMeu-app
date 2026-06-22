@@ -120,3 +120,53 @@ export const mockOrders = [
     items: [{ name: 'Tynor Knee Cap', qty: 1, price: 349 }],
   },
 ];
+
+export const mockTestimonials = [
+  {
+    name: 'Poojarani Das',
+    time: '2 years ago',
+    text: 'MEDMEU has great products and fast shipping. I always find what I need at MEDMEU. Their service is top-notch and i am very happy with my purchase! Thanks to team MEDMEU.',
+  },
+  {
+    name: 'Monalisa Pati',
+    time: '2 years ago',
+    text: 'I appreciate the wide selection of lab equipment at MEDMEU. It is very convenient for all medical students and Lab owners that, they can find all necessary equipment from one location. And the beauty is you can find all branded products in a affordable price.',
+  },
+  {
+    name: 'Pradiptaa Senapati',
+    time: '2 years ago',
+    text: 'From baby monitors to thermometers, they have everything I need to keep my little one safe and healthy. I found a wide rage of baby care products with best quality and affordable price. Highly Recommended for MEDMEU!',
+  },
+  {
+    name: 'Kalpasmita Tiwari',
+    time: '2 years ago',
+    text: 'I recently purchased the Blood Pressure Monitor from MEDMEU for my elderly mother. The large, easy-to-read display and simple operation make it perfect for seniors. Plus, the accuracy of the readings gives us confidence in monitoring her blood pressure at home. Thank you, MEDMEU, for providing such a high-quality product that promotes independence and peace of mind.',
+  },
+  {
+    name: 'Sibasankar Tewari',
+    time: '2 years ago',
+    text: "I'm happy to say that the blood glucose meter I purchased from MEDMEU exceeds my expectations. It's easy to use, provides fast and accurate results. Thank you, MEDMEU, for offering such a fantastic product.",
+  },
+  {
+    name: 'Prince Pratyush',
+    time: '2 years ago',
+    text: "I recently found MEDMEU while searching for healthcare equipment online, and I'm so glad I did. Not only did they have exactly what I needed, but the ordering process was quick and easy. Plus, my order arrived earlier than expected. Great experience overall.",
+  },
+  {
+    name: 'Sudhir Pradhan',
+    time: '2 years ago',
+    text: "As a caregiver for my elderly parents, I rely on MEDMEU for various home healthcare products. Their range of mobility aids, hygiene essentials, and monitoring devices has been invaluable to me. I wouldn't hesitate to recommend them to others in similar situations. No 1 healthcare ecommerce portal of odisha.",
+  },
+  {
+    name: 'Ganesh Nahak',
+    time: '2 years ago',
+    text: "I've shopped with MEDMEU recently, and I am very satisfied. The products are top-notch, and the customer service is exceptional. Highly Recommended!",
+  },
+];
+
+export const mockTrustBadges = [
+  { icon: '🚚', title: 'Fastest Delivery', subtitle: 'We Deliver Within 24 Hour' },
+  { icon: '🎧', title: 'Online Support 24/7', subtitle: 'Support online 24 hours a day' },
+  { icon: '↩️', title: 'Money Return', subtitle: 'Back guarantee under 7 days' },
+  { icon: '🏷️', title: 'Price Starting', subtitle: 'Starting on All Products at ₹120' },
+];

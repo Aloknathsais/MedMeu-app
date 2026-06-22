@@ -2,15 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar,
   IonBadge, IonIcon, IonRefresher, IonRefresherContent,
-  IonButton, IonChip,
+  IonButton, IonChip, IonMenuButton,
 } from '@ionic/react';
 import {
   cartOutline, notificationsOutline, heartOutline, heart,
-  starSharp, searchOutline, closeOutline, arrowForward,
+  starSharp, searchOutline, closeOutline, arrowForward, menuOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockCategories, mockProducts, mockBanners } from '../../utils/mockData';
+import { mockCategories, mockProducts, mockBanners, mockTestimonials, mockTrustBadges } from '../../utils/mockData';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -62,8 +62,13 @@ const HomePage: React.FC = () => {
         {!searchOpen ? (
           <IonToolbar>
             <div className="header-content">
-              <div className="header-logo">
-                <img src={Logo} alt="Medmeu" />
+              <div className="header-left-group">
+                <IonMenuButton menu="about-menu" autoHide={false} className="menu-btn">
+                  <IonIcon icon={menuOutline} className="header-icon" />
+                </IonMenuButton>
+                <div className="header-logo">
+                  <img src={Logo} alt="Medmeu" />
+                </div>
               </div>
               <div className="header-actions">
                 <IonIcon icon={searchOutline} className="header-icon" onClick={() => setSearchOpen(true)} />
@@ -182,6 +187,30 @@ const HomePage: React.FC = () => {
                 />
               ))}
             </div>
+
+            {/* ── Testimonials ── */}
+            <div className="section-header">
+              <h2>What Our Customers Say About Us</h2>
+            </div>
+            <div className="testimonial-slider">
+              {mockTestimonials.map((t, i) => (
+                <TestimonialCard key={i} testimonial={t} />
+              ))}
+            </div>
+
+            {/* ── Trust Badges ── */}
+            <div className="trust-strip">
+              {mockTrustBadges.map((b, i) => (
+                <div key={i} className="trust-item">
+                  <span className="trust-icon">{b.icon}</span>
+                  <div>
+                    <p className="trust-title">{b.title}</p>
+                    <p className="trust-subtitle">{b.subtitle}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
           </>
         )}
         <div style={{ height: 24 }} />
@@ -229,5 +258,33 @@ const ProductCard: React.FC<{
     </div>
   </div>
 );
+
+/* ── Testimonial card with "Read more" expand ── */
+const TestimonialCard: React.FC<{ testimonial: { name: string; time: string; text: string } }> = ({ testimonial }) => {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = testimonial.text.length > 160;
+  const displayText = expanded || !isLong ? testimonial.text : testimonial.text.slice(0, 160) + '...';
+
+  return (
+    <div className="testimonial-card">
+      <div className="testimonial-quote">“</div>
+      <p className="testimonial-text">
+        {displayText}
+        {isLong && (
+          <span className="read-more" onClick={() => setExpanded(!expanded)}>
+            {expanded ? ' Show less' : ' Read more'}
+          </span>
+        )}
+      </p>
+      <div className="testimonial-author">
+        <div className="author-avatar">{testimonial.name.charAt(0)}</div>
+        <div>
+          <p className="author-name">{testimonial.name}</p>
+          <p className="author-time">{testimonial.time}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default HomePage;

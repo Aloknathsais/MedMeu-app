@@ -1,7 +1,8 @@
 import React from 'react';
 import {
   IonApp, IonRouterOutlet, IonTabs, IonTabBar,
-  IonTabButton, IonIcon, IonLabel, setupIonicReact
+  IonTabButton, IonIcon, IonLabel, setupIonicReact,
+  IonPage
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
 import { Route, Redirect } from 'react-router-dom';
@@ -21,6 +22,7 @@ import HomePage from './pages/Home/HomePage';
 // import OrdersPage from './pages/Orders/OrdersPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import WishlistPage from './pages/Profile/WishlistPage';
+import AboutDrawer from './components/AboutDrawer';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -34,6 +36,9 @@ setupIonicReact({ mode: 'md' });
 const TabsLayout: React.FC = () => {
   const { state } = useApp();
   return (
+    <>
+    <AboutDrawer />
+    <IonPage id="main-content">
     <IonTabs>
       <IonRouterOutlet>
         <Route exact path="/tabs/home"     component={HomePage} />
@@ -85,6 +90,8 @@ const TabsLayout: React.FC = () => {
         </IonTabButton> */}
       </IonTabBar>
     </IonTabs>
+    </IonPage>
+    </>
   );
 };
 

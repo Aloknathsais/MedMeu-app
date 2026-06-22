@@ -1,0 +1,139 @@
+.about-menu {
+  --width: 86%;
+  --max-width: 360px;
+}
+
+.about-toolbar {
+  --background: linear-gradient(135deg, #2171a8 0%, #f4621d 100%);
+  --color: white;
+}
+.about-header-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0 8px;
+}
+.about-logo-mark { font-size: 22px; margin-right: 8px; }
+.about-title {
+  --color: white;
+  font-size: 20px;
+  font-weight: 800;
+  padding-left: 0;
+  margin-left: 16px;
+}
+.about-close-icon {
+  font-size: 26px;
+  color: white;
+  cursor: pointer;
+}
+
+.about-content { --background: #F8FAFC; }
+
+.about-section {
+  padding: 18px 18px 4px;
+}
+.about-intro {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #444;
+  margin: 0;
+}
+.about-body {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #555;
+  margin: 0;
+  background: white;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: var(--medmeu-card-shadow);
+}
+.about-heading {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #1a1a2e;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #eef2f6;
+}
+
+/* Brand chips */
+.brand-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.brand-chip {
+  background: white;
+  border: 1.5px solid #e0eaf3;
+  color: var(--medmeu-blue);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+.brand-chip-more {
+  background: #F0F6FA;
+  color: #888;
+  border-style: dashed;
+}
+
+/* Lists */
+.about-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.about-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: #444;
+  line-height: 1.5;
+  background: white;
+  padding: 10px 12px;
+  border-radius: 10px;
+  box-shadow: var(--medmeu-card-shadow);
+}
+.list-icon {
+  font-size: 16px;
+  color: var(--medmeu-blue);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.list-icon.star { color: var(--medmeu-orange); }
+
+/* Numbered categories */
+.category-numbered-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.numbered-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: var(--medmeu-card-shadow);
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+.numbered-badge {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--medmeu-blue), var(--medmeu-orange));
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
