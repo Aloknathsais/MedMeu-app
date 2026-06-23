@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   IonApp, IonRouterOutlet, IonTabs, IonTabBar,
   IonTabButton, IonIcon, IonLabel, setupIonicReact,
@@ -10,16 +10,16 @@ import {
   homeOutline, gridOutline, cartOutline,
   bagHandleOutline, personOutline,
 } from 'ionicons/icons';
-
+import { App as CapacitorApp } from '@capacitor/app';
 import { AppProvider, useApp } from './context/AppContext';
 import SplashScreen from './pages/Auth/SplashScreen';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
 import HomePage from './pages/Home/HomePage';
-// import ProductsPage from './pages/Products/ProductsPage';
-// import ProductDetailPage from './pages/Products/ProductDetailPage';
-// import CartPage from './pages/Cart/CartPage';
-// import OrdersPage from './pages/Orders/OrdersPage';
+import ProductsPage from './pages/Products/ProductsPage';
+import ProductDetailPage from './pages/Products/ProductDetailPage';
+import CartPage from './pages/Cart/CartPage';
+import OrdersPage from './pages/Orders/OrdersPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 import WishlistPage from './pages/Profile/WishlistPage';
 import AboutDrawer from './components/AboutDrawer';
@@ -42,11 +42,9 @@ const TabsLayout: React.FC = () => {
     <IonTabs>
       <IonRouterOutlet>
         <Route exact path="/tabs/home"     component={HomePage} />
-        {/** 
         <Route exact path="/tabs/products" component={ProductsPage} />
         <Route exact path="/tabs/cart"     component={CartPage} />
         <Route exact path="/tabs/orders"   component={OrdersPage} />
-        */}
         <Route exact path="/tabs/profile"  component={ProfilePage} />
         <Redirect exact from="/tabs" to="/tabs/home" />
       </IonRouterOutlet>
@@ -56,23 +54,7 @@ const TabsLayout: React.FC = () => {
           <IonIcon icon={homeOutline} />
           <IonLabel>Home</IonLabel>
         </IonTabButton>
-        <IonTabButton tab="products">
-          <IonIcon icon={gridOutline} />
-          <IonLabel>Products</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="cart">
-          <IonIcon icon={cartOutline} />
-          <IonLabel>Cart {state.cartCount > 0 ? `(${state.cartCount})` : ''}</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="orders">
-          <IonIcon icon={bagHandleOutline} />
-          <IonLabel>Orders</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="profile" href="/tabs/profile">
-          <IonIcon icon={personOutline} />
-          <IonLabel>Profile</IonLabel>
-        </IonTabButton>
-        {/* <IonTabButton tab="products" href="/tabs/products">
+        <IonTabButton tab="products" href="/tabs/products">
           <IonIcon icon={gridOutline} />
           <IonLabel>Products</IonLabel>
         </IonTabButton>
@@ -87,7 +69,7 @@ const TabsLayout: React.FC = () => {
         <IonTabButton tab="profile" href="/tabs/profile">
           <IonIcon icon={personOutline} />
           <IonLabel>Profile</IonLabel>
-        </IonTabButton> */}
+        </IonTabButton>
       </IonTabBar>
     </IonTabs>
     </IonPage>
@@ -104,7 +86,7 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/login"     component={LoginPage} />
         <Route exact path="/register"  component={RegisterPage} />
         <Route exact path="/wishlist"  component={WishlistPage} />
-        {/* <Route exact path="/product/:id" component={ProductDetailPage} /> */}
+        <Route exact path="/product/:id" component={ProductDetailPage} />
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
@@ -114,12 +96,28 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-const App: React.FC = () => (
+const App: React.FC = () => {
+  useEffect(() => {
+    const handler = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (canGoBack) {
+        window.history.back();
+      } else {
+        CapacitorApp.exitApp();
+      }
+    });
+
+    return () => {
+      handler.then(h => h.remove());
+    };
+  }, []);
+
+  return(
   <AppProvider>
     <IonApp>
       <AppRoutes />
     </IonApp>
   </AppProvider>
-);
+
+)};
 
 export default App;
