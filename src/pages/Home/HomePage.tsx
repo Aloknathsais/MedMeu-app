@@ -20,17 +20,51 @@ const HomePage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
+  const [loading, setLoading] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const bannerScrollRef = useRef<HTMLDivElement>(null);
+  const autoScrollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  /* Focus search input when search bar opens */
   useEffect(() => {
     if (searchOpen) {
       setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [searchOpen]);
 
+  /* Simulate initial data load — replace setTimeout with your real fetch */
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1200);
+    return () => clearTimeout(t);
+  }, []);
+
+  /* Auto-scroll banner every 4s, resets when activeBanner changes */
+  useEffect(() => {
+    if (loading) return;
+    autoScrollRef.current = setInterval(() => {
+      const el = bannerScrollRef.current;
+      if (!el) return;
+      const next = (activeBanner + 1) % mockBanners.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
+      setActiveBanner(next);
+    }, 4000);
+    return () => {
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current);
+    };
+  }, [loading, activeBanner]);
+
   const addToCart = (product: any) => {
-    dispatch({ type: 'ADD_TO_CART', payload: { id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit } });
+    dispatch({
+      type: 'ADD_TO_CART',
+      payload: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+        unit: product.unit,
+      },
+    });
   };
 
   const toggleWishlist = (id: string) => dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
@@ -50,6 +84,11 @@ const HomePage: React.FC = () => {
     if (!el) return;
     const idx = Math.round(el.scrollLeft / el.clientWidth);
     setActiveBanner(idx);
+  };
+
+  /* Pause auto-scroll when user manually interacts with banner */
+  const pauseAutoScroll = () => {
+    if (autoScrollRef.current) clearInterval(autoScrollRef.current);
   };
 
   const filteredProducts = mockProducts.filter(p =>
@@ -130,28 +169,38 @@ const HomePage: React.FC = () => {
         ) : (
           <>
             {/* ── Offer Banner Carousel ── */}
-            <div className="banner-section">
-              <div className="banner-slider" ref={bannerScrollRef} onScroll={handleBannerScroll}>
-                {mockBanners.map(b => (
-                  <div key={b.id} className="banner-card" style={{ background: b.bg }}>
-                    <span className="banner-badge">{b.badge}</span>
-                    <div className="banner-text">
-                      <h3>{b.title}</h3>
-                      <p>{b.subtitle}</p>
-                      <button className="banner-cta">
-                        {b.cta} <IonIcon icon={arrowForward} />
-                      </button>
+            {loading ? (
+              <BannerSkeleton />
+            ) : (
+              <div className="banner-section">
+                <div
+                  className="banner-slider"
+                  ref={bannerScrollRef}
+                  onScroll={handleBannerScroll}
+                  onTouchStart={pauseAutoScroll}
+                  onMouseDown={pauseAutoScroll}
+                >
+                  {mockBanners.map(b => (
+                    <div key={b.id} className="banner-card" style={{ background: b.bg }}>
+                      <span className="banner-badge">{b.badge}</span>
+                      <div className="banner-text">
+                        <h3>{b.title}</h3>
+                        <p>{b.subtitle}</p>
+                        <button className="banner-cta">
+                          {b.cta} <IonIcon icon={arrowForward} />
+                        </button>
+                      </div>
+                      <img src={b.image} alt="" className="banner-img" />
                     </div>
-                    <img src={b.image} alt="" className="banner-img" />
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="banner-dots">
+                  {mockBanners.map((_, i) => (
+                    <span key={i} className={`banner-dot ${i === activeBanner ? 'active' : ''}`} />
+                  ))}
+                </div>
               </div>
-              <div className="banner-dots">
-                {mockBanners.map((_, i) => (
-                  <span key={i} className={`banner-dot ${i === activeBanner ? 'active' : ''}`} />
-                ))}
-              </div>
-            </div>
+            )}
 
             {/* ── Categories ── */}
             <div className="section-header">
@@ -160,7 +209,11 @@ const HomePage: React.FC = () => {
             </div>
             <div className="category-grid">
               {mockCategories.map(cat => (
-                <div key={cat.id} className="category-item" onClick={() => history.push(`/tabs/products?cat=${cat.id}`)}>
+                <div
+                  key={cat.id}
+                  className="category-item"
+                  onClick={() => history.push(`/tabs/products?cat=${cat.id}`)}
+                >
                   <div className="category-icon" style={{ background: `${cat.color}18` }}>
                     <span>{cat.icon}</span>
                   </div>
@@ -175,18 +228,22 @@ const HomePage: React.FC = () => {
               <h2>Featured Products</h2>
               <span onClick={() => history.push('/tabs/products')}>See All</span>
             </div>
-            <div className="products-grid">
-              {mockProducts.map(product => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  inWishlist={state.wishlist.includes(product.id)}
-                  onCardClick={() => history.push(`/product/${product.id}`)}
-                  onWishlist={() => toggleWishlist(product.id)}
-                  onAddToCart={() => addToCart(product)}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <ProductsSkeleton />
+            ) : (
+              <div className="products-grid">
+                {mockProducts.map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    inWishlist={state.wishlist.includes(product.id)}
+                    onCardClick={() => history.push(`/product/${product.id}`)}
+                    onWishlist={() => toggleWishlist(product.id)}
+                    onAddToCart={() => addToCart(product)}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* ── Testimonials ── */}
             <div className="section-header">
@@ -210,7 +267,6 @@ const HomePage: React.FC = () => {
                 </div>
               ))}
             </div>
-
           </>
         )}
         <div style={{ height: 24 }} />
@@ -219,18 +275,53 @@ const HomePage: React.FC = () => {
   );
 };
 
+/* ── Skeleton: banner placeholder ── */
+const BannerSkeleton: React.FC = () => (
+  <div className="banner-section">
+    <div className="skeleton-banner" />
+    <div className="banner-dots">
+      <span className="banner-dot active" />
+      <span className="banner-dot" />
+      <span className="banner-dot" />
+    </div>
+  </div>
+);
+
+/* ── Skeleton: product grid placeholders ── */
+const ProductsSkeleton: React.FC = () => (
+  <div className="products-grid">
+    {[...Array(4)].map((_, i) => (
+      <div key={i} className="skeleton-product-card">
+        <div className="skeleton-img" />
+        <div className="skeleton-body">
+          <div className="skeleton-line w-80" />
+          <div className="skeleton-line w-50" />
+          <div className="skeleton-line w-60" />
+          <div className="skeleton-btn" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 /* ── Reusable product card ── */
 const ProductCard: React.FC<{
   product: any;
+  badge?: { label: string; type: 'new' | 'bestseller' };
   inWishlist: boolean;
   onCardClick: () => void;
   onWishlist: () => void;
   onAddToCart: () => void;
-}> = ({ product, inWishlist, onCardClick, onWishlist, onAddToCart }) => (
+}> = ({ product, badge, inWishlist, onCardClick, onWishlist, onAddToCart }) => (
   <div className="product-card" onClick={onCardClick}>
     <div className="product-img-wrap">
       <img src={product.image} alt={product.name} loading="lazy" />
-      {product.discount > 0 && <span className="discount-badge">{product.discount}% OFF</span>}
+      {product.discount > 0 && (
+        <span className="discount-badge">{product.discount}% OFF</span>
+      )}
+      {badge && (
+        <span className={`product-ribbon ribbon-${badge.type}`}>{badge.label}</span>
+      )}
       <div className="wishlist-btn" onClick={e => { e.stopPropagation(); onWishlist(); }}>
         <IonIcon icon={inWishlist ? heart : heartOutline} color={inWishlist ? 'danger' : 'medium'} />
       </div>
@@ -251,7 +342,12 @@ const ProductCard: React.FC<{
       {!product.inStock ? (
         <IonChip color="danger" style={{ fontSize: 11, height: 24 }}>Out of Stock</IonChip>
       ) : (
-        <IonButton size="small" expand="block" className="add-btn" onClick={e => { e.stopPropagation(); onAddToCart(); }}>
+        <IonButton
+          size="small"
+          expand="block"
+          className="add-btn"
+          onClick={e => { e.stopPropagation(); onAddToCart(); }}
+        >
           Add to Cart
         </IonButton>
       )}
@@ -260,14 +356,17 @@ const ProductCard: React.FC<{
 );
 
 /* ── Testimonial card with "Read more" expand ── */
-const TestimonialCard: React.FC<{ testimonial: { name: string; time: string; text: string } }> = ({ testimonial }) => {
+const TestimonialCard: React.FC<{
+  testimonial: { name: string; time: string; text: string };
+}> = ({ testimonial }) => {
   const [expanded, setExpanded] = useState(false);
   const isLong = testimonial.text.length > 160;
-  const displayText = expanded || !isLong ? testimonial.text : testimonial.text.slice(0, 160) + '...';
+  const displayText =
+    expanded || !isLong ? testimonial.text : testimonial.text.slice(0, 160) + '...';
 
   return (
     <div className="testimonial-card">
-      <div className="testimonial-quote">“</div>
+      <div className="testimonial-quote">"</div>
       <p className="testimonial-text">
         {displayText}
         {isLong && (
