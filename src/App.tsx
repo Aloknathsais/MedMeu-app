@@ -37,45 +37,62 @@ const TabsLayout: React.FC = () => {
   const { state } = useApp();
   return (
     <>
-    <AboutDrawer />
-    <IonPage id="main-content">
-    <IonTabs>
-      <IonRouterOutlet>
-        <Route exact path="/tabs/home"     component={HomePage} />
-        <Route exact path="/tabs/products" component={ProductsPage} />
-        <Route exact path="/tabs/cart"     component={CartPage} />
-        <Route exact path="/tabs/orders"   component={OrdersPage} />
-        <Route exact path="/tabs/profile"  component={ProfilePage} />
-        <Redirect exact from="/tabs" to="/tabs/home" />
-      </IonRouterOutlet>
+      <AboutDrawer />
+      <IonPage id="main-content">
+        <IonTabs>
+          <IonRouterOutlet>
+            <Route exact path="/tabs/home"     component={HomePage} />
+            <Route exact path="/tabs/products" component={ProductsPage} />
+            <Route exact path="/tabs/cart"     component={CartPage} />
+            <Route exact path="/tabs/orders"   component={OrdersPage} />
+            <Route exact path="/tabs/profile"  component={ProfilePage} />
+            <Redirect exact from="/tabs" to="/tabs/home" />
+          </IonRouterOutlet>
 
-      <IonTabBar slot="bottom">
-        <IonTabButton tab="home" href="/tabs/home">
-          <IonIcon icon={homeOutline} />
-          <IonLabel>Home</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="products" href="/tabs/products">
-          <IonIcon icon={gridOutline} />
-          <IonLabel>Products</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="cart" href="/tabs/cart">
-          <IonIcon icon={cartOutline} />
-          <IonLabel>Cart {state.cartCount > 0 ? `(${state.cartCount})` : ''}</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="orders" href="/tabs/orders">
-          <IonIcon icon={bagHandleOutline} />
-          <IonLabel>Orders</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="profile" href="/tabs/profile">
-          <IonIcon icon={personOutline} />
-          <IonLabel>Profile</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
-    </IonTabs>
-    </IonPage>
+          <IonTabBar slot="bottom" className="custom-tab-bar">
+            <IonTabButton tab="home" href="/tabs/home" className="custom-tab-btn">
+              <div className="tab-icon-wrap">
+                <IonIcon icon={homeOutline} />
+              </div>
+              <IonLabel>Home</IonLabel>
+            </IonTabButton>
+
+            <IonTabButton tab="products" href="/tabs/products" className="custom-tab-btn">
+              <div className="tab-icon-wrap">
+                <IonIcon icon={gridOutline} />
+              </div>
+              <IonLabel>Products</IonLabel>
+            </IonTabButton>
+
+            <IonTabButton tab="cart" href="/tabs/cart" className="custom-tab-btn cart-tab">
+              <div className="cart-icon-wrap">
+                <IonIcon icon={cartOutline} />
+                {state.cartCount > 0 && (
+                  <span className="tab-cart-badge">{state.cartCount}</span>
+                )}
+              </div>
+              <IonLabel>Cart</IonLabel>
+            </IonTabButton>
+
+            <IonTabButton tab="orders" href="/tabs/orders" className="custom-tab-btn">
+              <div className="tab-icon-wrap">
+                <IonIcon icon={bagHandleOutline} />
+              </div>
+              <IonLabel>Orders</IonLabel>
+            </IonTabButton>
+
+            <IonTabButton tab="profile" href="/tabs/profile" className="custom-tab-btn">
+              <div className="tab-icon-wrap">
+                <IonIcon icon={personOutline} />
+              </div>
+              <IonLabel>Profile</IonLabel>
+            </IonTabButton>
+          </IonTabBar>
+        </IonTabs>
+      </IonPage>
     </>
   );
-};
+};  
 
 const AppRoutes: React.FC = () => {
   const { state } = useApp();
