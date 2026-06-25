@@ -7,6 +7,10 @@ import {
 import {
   cartOutline, notificationsOutline, heartOutline, heart,
   starSharp, searchOutline, closeOutline, arrowForward, menuOutline,
+  logoWhatsapp,
+  logoInstagram,
+  logoFacebook,
+  shieldCheckmarkOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
@@ -267,9 +271,31 @@ const HomePage: React.FC = () => {
                 </div>
               ))}
             </div>
+
+            {/* ── App Footer ── */}
+            <div className="app-footer">
+              
+
+              <div className="footer-social-row">
+                <a href="https://wa.me/919876543210" className="social-icon-btn whatsapp"><IonIcon icon={logoWhatsapp} /></a>
+                <a href="#" className="social-icon-btn instagram"><IonIcon icon={logoInstagram} /></a>
+                <a href="#" className="social-icon-btn facebook"><IonIcon icon={logoFacebook} /></a>
+              </div>
+
+              <div className="footer-secure-badge">
+                <IonIcon icon={shieldCheckmarkOutline} />
+                <span>100% Secure Payments & Verified Sellers</span>
+              </div>
+
+              <div className="footer-logo-watermark">
+                <img src={Logo} alt="Medmeu" />
+              </div>
+
+              {/* <p className="footer-copyright">© {new Date().getFullYear()} Medmeu. All rights reserved.</p> */}
+            </div>
           </>
         )}
-        <div style={{ height: 24 }} />
+        {/* <div style={{ height: 24 }} /> */}
       </IonContent>
     </IonPage>
   );
