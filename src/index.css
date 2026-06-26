@@ -85,7 +85,7 @@ ion-chip { --background: #eee; }
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .cart-tab .cart-icon-wrap ion-icon {
-  color: white;
+  color: var(--medmeu-white);
   font-size: 21px;
 }
 .cart-tab.tab-selected .cart-icon-wrap {
@@ -97,7 +97,7 @@ ion-chip { --background: #eee; }
   position: absolute;
   top: -4px;
   right: -4px;
-  background: white;
+  background: var(--medmeu-white);
   color: var(--medmeu-orange);
   font-size: 10px;
   font-weight: 800;

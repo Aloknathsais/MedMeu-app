@@ -44,4 +44,6 @@
   --medmeu-gradient: linear-gradient(135deg, #2171a8 0%, #f4621d 100%);
   --medmeu-blue: #2171a8;
   --medmeu-orange: #f4621d;
+  --medmeu-white: #ffffff;
+  --medmeu-black: #000000;
 }
