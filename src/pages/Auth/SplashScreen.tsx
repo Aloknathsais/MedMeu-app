@@ -1,17 +1,17 @@
 import React, { useEffect } from 'react';
 import { IonPage, IonContent } from '@ionic/react';
-import { useHistory } from 'react-router-dom';
+import { useIonRouter } from '@ionic/react';
 import { useApp } from '../../context/AppContext';
 import './Splash.css';
 import Logo from '../../assets/logo.png';
 
 const SplashScreen: React.FC = () => {
-  const history = useHistory();
+  const router = useIonRouter();
   const { state } = useApp();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      history.replace(state.isAuthenticated ? '/tabs/home' : '/login');
+      router.push(state.isAuthenticated ? '/tabs/home' : '/login', 'root', 'replace');
     }, 2400);
     return () => clearTimeout(timer);
   }, []);

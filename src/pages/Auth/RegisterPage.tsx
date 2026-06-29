@@ -3,6 +3,7 @@ import {
   IonPage, IonContent, IonSpinner, IonIcon, IonText,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
+import { useIonRouter } from '@ionic/react';
 import {
   personOutline, mailOutline, lockClosedOutline,
   eyeOutline, eyeOffOutline, documentTextOutline,
@@ -13,6 +14,7 @@ import Logo from '../../assets/logo.png';
 
 const RegisterPage: React.FC = () => {
   const history = useHistory();
+  const router = useIonRouter();
   const { dispatch } = useApp();
   const [form, setForm] = useState({
     username: '',
@@ -45,7 +47,7 @@ const RegisterPage: React.FC = () => {
     dispatch({ type: 'SET_AUTH', payload: true });
     dispatch({ type: 'SET_USER', payload: { id: '1', name: form.username, email: form.email, phone: '' } });
     localStorage.setItem('medmeu_token', 'demo_token');
-    history.replace('/tabs/home');
+    router.push('/tabs/home', 'root', 'replace');
     setLoading(false);
   };
 

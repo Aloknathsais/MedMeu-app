@@ -4,6 +4,7 @@ import {
   IonText, IonSpinner, IonIcon,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
+import { useIonRouter } from '@ionic/react';
 import { eyeOutline, eyeOffOutline, lockClosedOutline, personOutline } from 'ionicons/icons';
 import { useApp } from '../../context/AppContext';
 import './Auth.css';
@@ -11,6 +12,7 @@ import Logo from '../../assets/logo.png';
 
 const LoginPage: React.FC = () => {
   const history = useHistory();
+  const router = useIonRouter();
   const { dispatch } = useApp();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +29,7 @@ const LoginPage: React.FC = () => {
       dispatch({ type: 'SET_AUTH', payload: true });
       dispatch({ type: 'SET_USER', payload: { id: '1', name: username, email: username, phone: '' } });
       localStorage.setItem('medmeu_token', 'demo_token');
-      history.replace('/tabs/home');
+      router.push('/tabs/home', 'root', 'replace');
     } catch {
       setError('Invalid credentials. Please try again.');
     } finally {
