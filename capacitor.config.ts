@@ -5,13 +5,13 @@ const config: CapacitorConfig = {
   appName: 'Medmeu',
   webDir: 'dist',
   server: {
-    // androidScheme: 'https',  //prod
-    url: 'http://192.168.29.230:5173',
+    androidScheme: 'https',                 // prod
+    // url: 'http://192.168.29.230:5173',   // dev
     cleartext: true,
   },
   android: {
     allowMixedContent: true,
-    backgroundColor: '#1565C0',
+    backgroundColor: '#2171a8',
   },
   plugins: {
     SplashScreen: {
@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#1565C0',
+      backgroundColor: '#2171a8',
       overlaysWebView: true,      // ← this makes content go under status bar
     },
     EdgeToEdge: {

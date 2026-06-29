@@ -110,3 +110,7 @@ ion-chip { --background: #eee; }
   padding: 0 4px;
   border: 2px solid var(--medmeu-orange);
 }
+
+.ion-page-invisible {
+  opacity: 1 !important;
+}

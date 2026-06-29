@@ -1,3 +1,15 @@
+// ── Local product images ──
+import product1 from '../assets/product1.jfif';
+import product2 from '../assets/product2.jfif';
+import product3 from '../assets/product3.jfif';
+import product6 from '../assets/product6.jfif';
+import product8 from '../assets/product8.jfif';
+
+// ── Local banner images ──
+import banner1 from '../assets/banner1.jfif';
+import banner2 from '../assets/banner2.jfif';
+import banner3 from '../assets/banner3.jfif';
+
 export const mockCategories = [
   { id: '1', name: 'BP Monitors', icon: '❤️', color: '#FF5252', count: 24 },
   { id: '2', name: 'Diabetic Care', icon: '🩸', color: '#FF6D00', count: 18 },
@@ -13,7 +25,7 @@ export const mockProducts = [
   {
     id: 'p1', name: 'Omron HEM-7120 Blood Pressure Monitor', price: 2499, originalPrice: 3200,
     discount: 22, rating: 4.5, reviews: 1240,
-    image: 'https://images.unsplash.com/photo-1581595219315-a187dd40c322?w=400&h=400&fit=crop&q=80',
+    image: product1,
     category: '1', brand: 'Omron', inStock: true, unit: '1 Unit',
     description: 'Clinically validated upper arm blood pressure monitor with IntelliSense technology for accurate readings.',
     specs: ['IntelliSense Technology', 'Memory: 60 readings', 'Irregular heartbeat detection', 'USB powered'],
@@ -21,7 +33,7 @@ export const mockProducts = [
   {
     id: 'p2', name: 'Accu-Chek Active Glucometer Kit', price: 1199, originalPrice: 1499,
     discount: 20, rating: 4.6, reviews: 890,
-    image: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?w=400&h=400&fit=crop&q=80',
+    image: product2,
     category: '2', brand: 'Accu-Chek', inStock: true, unit: '1 Kit',
     description: 'Complete glucometer kit for accurate blood glucose monitoring at home.',
     specs: ['Test strips included: 10', 'Result time: 5 sec', 'Memory: 500 readings', 'No coding required'],
@@ -29,7 +41,7 @@ export const mockProducts = [
   {
     id: 'p3', name: 'Dr. Morepen Pulse Oximeter', price: 799, originalPrice: 1200,
     discount: 33, rating: 4.3, reviews: 2100,
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=400&h=400&fit=crop&q=80',
+    image: product3,
     category: '3', brand: 'Dr. Morepen', inStock: true, unit: '1 Unit',
     description: 'Fingertip pulse oximeter with large LED display for SpO2 and pulse rate monitoring.',
     specs: ['SpO2 range: 70-99%', 'Pulse rate: 30-250 bpm', 'Auto power off', 'Battery: 2x AAA'],
@@ -37,7 +49,7 @@ export const mockProducts = [
   {
     id: 'p4', name: 'Tynor Knee Cap Support', price: 349, originalPrice: 450,
     discount: 22, rating: 4.2, reviews: 560,
-    image: 'https://images.unsplash.com/photo-1559757175102-43ec3f0db44f?w=400&h=400&fit=crop&q=80',
+    image: product1,
     category: '4', brand: 'Tynor', inStock: true, unit: '1 Piece',
     description: 'Provides compression and warmth to knee joint for pain relief and support.',
     specs: ['Material: Neoprene', 'Sizes: S, M, L, XL', 'Washable', 'Bilateral use'],
@@ -45,7 +57,7 @@ export const mockProducts = [
   {
     id: 'p5', name: 'Himalaya Baby Lotion 400ml', price: 185, originalPrice: 220,
     discount: 16, rating: 4.7, reviews: 3200,
-    image: 'https://images.unsplash.com/photo-1556228720-da4e95ee06ac?w=400&h=400&fit=crop&q=80',
+    image: product2,
     category: '5', brand: 'Himalaya', inStock: true, unit: '400ml',
     description: 'Gentle baby lotion with natural oils for soft and moisturized skin.',
     specs: ['No parabens', 'Dermatologically tested', 'SPF protection', 'Tear-free formula'],
@@ -53,7 +65,7 @@ export const mockProducts = [
   {
     id: 'p6', name: 'Dettol First Aid Kit', price: 599, originalPrice: 799,
     discount: 25, rating: 4.4, reviews: 780,
-    image: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400&h=400&fit=crop&q=80',
+    image: product6,
     category: '6', brand: 'Dettol', inStock: false, unit: '1 Kit',
     description: 'Complete first aid kit for home and travel with 50+ essential items.',
     specs: ['50+ items', 'Portable case', 'Includes bandages', 'Antiseptic wipes'],
@@ -61,7 +73,7 @@ export const mockProducts = [
   {
     id: 'p7', name: 'Vicks Vaporizer Steam Inhaler', price: 449, originalPrice: 599,
     discount: 25, rating: 4.1, reviews: 412,
-    image: 'https://images.unsplash.com/photo-1631815588090-d4bfec5b7e7e?w=400&h=400&fit=crop&q=80',
+    image: product3,
     category: '7', brand: 'Vicks', inStock: true, unit: '1 Unit',
     description: 'Effective steam inhaler for cold and congestion relief at home.',
     specs: ['BPA free', 'Easy to clean', 'Compact design', 'Safety auto-shutoff'],
@@ -69,7 +81,7 @@ export const mockProducts = [
   {
     id: 'p8', name: 'Eyemist Eye Drops 10ml', price: 99, originalPrice: 130,
     discount: 24, rating: 4.0, reviews: 215,
-    image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&h=400&fit=crop&q=80',
+    image: product8,
     category: '8', brand: 'Eyemist', inStock: true, unit: '10ml',
     description: 'Soothing eye drops for dryness and irritation relief.',
     specs: ['Preservative free', 'Suitable for contact lens users', 'Sterile formula'],
@@ -84,7 +96,7 @@ export const mockBanners = [
     cta: 'Shop Now',
     badge: 'LIMITED TIME',
     bg: 'linear-gradient(120deg, #2171a8 0%, #194f78 100%)',
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=300&h=300&fit=crop&q=80',
+    image: banner1,
   },
   {
     id: '2',
@@ -93,7 +105,7 @@ export const mockBanners = [
     cta: 'Order Now',
     badge: 'ALWAYS ON',
     bg: 'linear-gradient(120deg, #f4621d 0%, #c94d12 100%)',
-    image: 'https://images.unsplash.com/photo-1577401239170-897942555fb3?w=300&h=300&fit=crop&q=80',
+    image: banner2,
   },
   {
     id: '3',
@@ -102,7 +114,7 @@ export const mockBanners = [
     cta: 'Book Test',
     badge: 'NEW',
     bg: 'linear-gradient(120deg, #00897B 0%, #00695C 100%)',
-    image: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=300&h=300&fit=crop&q=80',
+    image: banner3,
   },
 ];
 
