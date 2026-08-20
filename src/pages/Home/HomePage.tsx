@@ -14,7 +14,7 @@ import {
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockCategories, mockProducts, mockBanners, mockTestimonials, mockTrustBadges } from '../../utils/mockData';
+import { mockCategories, mockProducts, mockBanners, mockTestimonials, mockTrustBadges, mockDeals } from '../../utils/mockData';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -227,6 +227,21 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
+            {/* ── Offer Zone ── */}
+            <div className="section-header">
+              <h2>🔥 Offer Zone</h2>
+              <span onClick={() => history.push('/tabs/products')}>View All</span>
+            </div>
+            <div className="deals-scroll">
+              {mockDeals.map(deal => (
+                <DealCard
+                  key={deal.id}
+                  deal={deal}
+                  onPress={() => history.push('/tabs/products')}
+                />
+              ))}
+            </div>
+
             {/* ── Featured Products ── */}
             <div className="section-header">
               <h2>Featured Products</h2>
@@ -408,6 +423,76 @@ const TestimonialCard: React.FC<{
           <p className="author-time">{testimonial.time}</p>
         </div>
       </div>
+    </div>
+  );
+};
+
+/* ── Countdown timer hook ── */
+const useCountdown = (initial: string) => {
+  const [time, setTime] = useState(initial);
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setTime(prev => {
+        const [h, m, s] = prev.split(':').map(Number);
+        let total = h * 3600 + m * 60 + s - 1;
+        if (total <= 0) { clearInterval(tick); return '00:00:00'; }
+        const hh = String(Math.floor(total / 3600)).padStart(2, '0');
+        const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+        const ss = String(total % 60).padStart(2, '0');
+        return `${hh}:${mm}:${ss}`;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+  return time;
+};
+
+/* Darkens a hex color by a given amount, used to build the deal-card gradient */
+const darkenColor = (hex: string, amount: number) => {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.max(0, (num >> 16) - amount);
+  const g = Math.max(0, ((num >> 8) & 0x00ff) - amount);
+  const b = Math.max(0, (num & 0x0000ff) - amount);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+};
+
+/* ── Single deal card — premium banner-style with live countdown ── */
+const DealCard: React.FC<{ deal: any; onPress: () => void }> = ({ deal, onPress }) => {
+  const time = useCountdown(deal.endsIn);
+  return (
+    <div
+      className="deal-card"
+      style={{ background: `linear-gradient(135deg, ${deal.color} 0%, ${darkenColor(deal.color, 45)} 100%)` }}
+      onClick={onPress}
+    >
+      <span className="deal-emoji-bg">{deal.emoji}</span>
+
+      <div className="deal-card-top">
+        <span className="deal-tag">{deal.tag}</span>
+        <div className="deal-discount-pill">
+          <span>{deal.discount}%</span>
+          <span>OFF</span>
+        </div>
+      </div>
+
+      <div className="deal-card-body">
+        <p className="deal-title">{deal.title}</p>
+        <p className="deal-desc">{deal.description}</p>
+      </div>
+
+      <div className="deal-card-bottom">
+        <div className="deal-price-row">
+          <span className="deal-price">₹{deal.dealPrice}</span>
+          <span className="deal-original">₹{deal.originalPrice}</span>
+        </div>
+        <div className="deal-timer">
+          <span className="timer-label">⏱ {time}</span>
+        </div>
+      </div>
+
+      <button className="deal-btn">
+        Grab Deal <IonIcon icon={arrowForward} />
+      </button>
     </div>
   );
 };
