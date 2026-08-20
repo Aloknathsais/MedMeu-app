@@ -456,43 +456,47 @@ const darkenColor = (hex: string, amount: number) => {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 };
 
-/* ── Single deal card — premium banner-style with live countdown ── */
+/* ── Single deal card — premium voucher/ticket style with live countdown ── */
 const DealCard: React.FC<{ deal: any; onPress: () => void }> = ({ deal, onPress }) => {
   const time = useCountdown(deal.endsIn);
   return (
-    <div
-      className="deal-card"
-      style={{ background: `linear-gradient(135deg, ${deal.color} 0%, ${darkenColor(deal.color, 45)} 100%)` }}
-      onClick={onPress}
-    >
-      <span className="deal-emoji-bg">{deal.emoji}</span>
-
-      <div className="deal-card-top">
-        <span className="deal-tag">{deal.tag}</span>
-        <div className="deal-discount-pill">
-          <span>{deal.discount}%</span>
-          <span>OFF</span>
+    <div className="deal-card" onClick={onPress}>
+      <div
+        className="deal-card-header"
+        style={{ background: `linear-gradient(135deg, ${deal.color} 0%, ${darkenColor(deal.color, 45)} 100%)` }}
+      >
+        <span className="deal-emoji-bg">{deal.emoji}</span>
+        <div className="deal-card-top">
+          <span className="deal-tag">{deal.tag}</span>
+          <div className="deal-discount-pill">
+            <span>{deal.discount}%</span>
+            <span>OFF</span>
+          </div>
         </div>
+        <p className="deal-title">{deal.title}</p>
+      </div>
+
+      <div className="deal-ticket-divider">
+        <span className="deal-notch deal-notch-left" />
+        <span className="deal-dashes" />
+        <span className="deal-notch deal-notch-right" />
       </div>
 
       <div className="deal-card-body">
-        <p className="deal-title">{deal.title}</p>
         <p className="deal-desc">{deal.description}</p>
-      </div>
-
-      <div className="deal-card-bottom">
-        <div className="deal-price-row">
-          <span className="deal-price">₹{deal.dealPrice}</span>
-          <span className="deal-original">₹{deal.originalPrice}</span>
+        <div className="deal-card-bottom">
+          <div className="deal-price-row">
+            <span className="deal-price">₹{deal.dealPrice}</span>
+            <span className="deal-original">₹{deal.originalPrice}</span>
+          </div>
+          <div className="deal-timer">
+            <span className="timer-label">⏱ {time}</span>
+          </div>
         </div>
-        <div className="deal-timer">
-          <span className="timer-label">⏱ {time}</span>
-        </div>
+        <button className="deal-btn" style={{ background: deal.color }}>
+          Grab Deal <IonIcon icon={arrowForward} />
+        </button>
       </div>
-
-      <button className="deal-btn">
-        Grab Deal <IonIcon icon={arrowForward} />
-      </button>
     </div>
   );
 };
