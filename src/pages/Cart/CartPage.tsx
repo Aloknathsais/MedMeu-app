@@ -6,10 +6,18 @@ import {
 import {
   trashOutline, locationOutline, chevronForward, cardOutline,
   cashOutline, phonePortraitOutline, checkmarkCircle, bagHandleOutline,
+  pricetagOutline, chevronDown,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import './Cart.css';
+
+/* ── Mock promo codes (swap for a real API validation call later) ── */
+const PROMO_CODES: Record<string, { type: 'percent' | 'flat' | 'shipping'; value: number; label: string }> = {
+  MED10: { type: 'percent', value: 10, label: '10% off on item total' },
+  FLAT50: { type: 'flat', value: 50, label: '₹50 off on your order' },
+  FREESHIP: { type: 'shipping', value: 0, label: 'Free delivery on this order' },
+};
 
 const CartPage: React.FC = () => {
   const history = useHistory();
@@ -18,10 +26,41 @@ const CartPage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
   const [placing, setPlacing] = useState(false);
 
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoInput, setPromoInput] = useState('');
+  const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState('');
+
   const total = state.cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const delivery = total >= 499 || total === 0 ? 0 : 49;
   const savings = state.cartItems.reduce((s, i) => s + (i.price * 0.1) * i.quantity, 0);
   const amountToFreeDelivery = 499 - total;
+
+  const activePromo = promoCode ? PROMO_CODES[promoCode] : null;
+  const finalDelivery = activePromo?.type === 'shipping' ? 0 : delivery;
+  const promoDiscount =
+    activePromo?.type === 'percent' ? Math.round((total * activePromo.value) / 100)
+    : activePromo?.type === 'flat' ? Math.min(activePromo.value, total)
+    : 0;
+  const finalTotal = total + finalDelivery - promoDiscount;
+
+  const applyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    if (!PROMO_CODES[code]) {
+      setPromoError('Invalid or expired promo code');
+      return;
+    }
+    setPromoCode(code);
+    setPromoError('');
+    setPromoOpen(false);
+  };
+
+  const removePromo = () => {
+    setPromoCode(null);
+    setPromoInput('');
+    setPromoError('');
+  };
 
   const updateQty = (id: string, qty: number) => dispatch({ type: 'UPDATE_CART_QTY', payload: { id, quantity: qty } });
   const remove = (id: string) => dispatch({ type: 'REMOVE_FROM_CART', payload: id });
@@ -160,12 +199,62 @@ const CartPage: React.FC = () => {
               <div className="bill-row savings"><span>Discount</span><span>−₹{Math.round(savings)}</span></div>
               <div className="bill-row">
                 <span>Delivery Fee</span>
-                <span>{delivery === 0 ? <span className="free-tag">FREE</span> : `₹${delivery}`}</span>
+                <span>{finalDelivery === 0 ? <span className="free-tag">FREE</span> : `₹${finalDelivery}`}</span>
               </div>
+
+              <div className="bill-divider" />
+
+              {/* Promo code */}
+              <div className="promo-section">
+                {!promoCode ? (
+                  <>
+                    <button className="promo-toggle" onClick={() => setPromoOpen(o => !o)}>
+                      <span className="promo-toggle-left">
+                        <IonIcon icon={pricetagOutline} />
+                        I have a promo code
+                      </span>
+                      <IonIcon icon={chevronDown} className={`promo-chevron ${promoOpen ? 'open' : ''}`} />
+                    </button>
+                    {promoOpen && (
+                      <div className="promo-input-wrap">
+                        <div className="promo-input-row">
+                          <input
+                            type="text"
+                            className="promo-input"
+                            placeholder="Enter promo code"
+                            value={promoInput}
+                            onChange={e => { setPromoInput(e.target.value); setPromoError(''); }}
+                          />
+                          <button className="promo-apply-btn" onClick={applyPromo} disabled={!promoInput.trim()}>
+                            Apply
+                          </button>
+                        </div>
+                        {promoError && <p className="promo-error">{promoError}</p>}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="promo-applied">
+                    <div className="promo-applied-left">
+                      <IonIcon icon={pricetagOutline} className="promo-applied-icon" />
+                      <div className="promo-applied-text">
+                        <strong>{promoCode} applied</strong>
+                        <span>{activePromo?.label}</span>
+                      </div>
+                    </div>
+                    <button className="promo-remove-btn" onClick={removePromo}>Remove</button>
+                  </div>
+                )}
+              </div>
+
+              {promoCode && promoDiscount > 0 && (
+                <div className="bill-row savings"><span>Promo ({promoCode})</span><span>−₹{promoDiscount.toLocaleString()}</span></div>
+              )}
+
               <div className="bill-divider" />
               <div className="bill-total-row">
                 <span>To Pay</span>
-                <span>₹{(total + delivery).toLocaleString()}</span>
+                <span>₹{finalTotal.toLocaleString()}</span>
               </div>
             </div>
 
@@ -187,7 +276,7 @@ const CartPage: React.FC = () => {
         <div className="checkout-bar">
           <div className="checkout-amount">
             <span className="checkout-label">Total Amount</span>
-            <span className="checkout-total">₹{(total + delivery).toLocaleString()}</span>
+            <span className="checkout-total">₹{finalTotal.toLocaleString()}</span>
           </div>
           <button className="checkout-btn" onClick={placeOrder} disabled={placing}>
             {placing ? 'Placing...' : 'Place Order'}
