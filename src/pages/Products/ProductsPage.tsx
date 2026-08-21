@@ -6,10 +6,11 @@ import {
 import {
   starSharp, heartOutline, heart, optionsOutline, closeOutline,
   searchOutline, chevronDownOutline, gridOutline, listOutline,
+  chevronForwardOutline, chevronDownOutline as chevronDown,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockProducts, mockCategories } from '../../utils/mockData';
+import { mockProducts, mockCategories, mockSubCategories } from '../../utils/mockData';
 import './Products.css';
 
 const sortOptions = [
@@ -36,6 +37,8 @@ const ProductsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('popular');
   const [selectedCat, setSelectedCat] = useState('all');
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [selectedSubCat, setSelectedSubCat] = useState<string | null>(null);
   const [showSortSheet, setShowSortSheet] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -55,17 +58,8 @@ const ProductsPage: React.FC = () => {
     dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
   };
 
-  const toggleSize = (size: string) => {
-    setSelectedSizes(prev =>
-      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
-    );
-  };
-
-  const toggleWeight = (w: string) => {
-    setSelectedWeights(prev =>
-      prev.includes(w) ? prev.filter(x => x !== w) : [...prev, w]
-    );
-  };
+  const toggleSize = (s: string) => setSelectedSizes(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
+  const toggleWeight = (w: string) => setSelectedWeights(p => p.includes(w) ? p.filter(x => x !== w) : [...p, w]);
 
   const resetFilters = () => {
     setPriceRange([0, 5000]);
@@ -75,8 +69,45 @@ const ProductsPage: React.FC = () => {
     setSelectedWeights([]);
   };
 
+  // Handle category chip tap
+  const handleCatTap = (catId: string) => {
+    const cat = mockCategories.find(c => c.id === catId);
+    if (catId === 'all') {
+      setSelectedCat('all');
+      setExpandedCat(null);
+      setSelectedSubCat(null);
+      return;
+    }
+    if (cat?.hasSubCategories && mockSubCategories[catId]) {
+      // Toggle expand; if already expanded, collapse
+      if (expandedCat === catId) {
+        setExpandedCat(null);
+        setSelectedSubCat(null);
+      } else {
+        setExpandedCat(catId);
+        setSelectedCat(catId);
+        setSelectedSubCat(null);
+      }
+    } else {
+      // No subcategories — select directly
+      setSelectedCat(catId);
+      setExpandedCat(null);
+      setSelectedSubCat(null);
+    }
+  };
+
+  // Handle subcategory tap
+  const handleSubCatTap = (subId: string) => {
+    setSelectedSubCat(prev => prev === subId ? null : subId);
+  };
+
+  // Filter products
   let filtered = mockProducts
-    .filter(p => selectedCat === 'all' || p.category === selectedCat)
+    .filter(p => {
+      if (selectedCat === 'all') return true;
+      if (p.category !== selectedCat) return false;
+      return true;
+    })
     .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()))
     .filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
     .filter(p => !inStockOnly || p.inStock)
@@ -116,17 +147,75 @@ const ProductsPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        {/* Category chips */}
-        <div className="cat-chips">
-          <button className={`cat-chip ${selectedCat === 'all' ? 'active' : ''}`} onClick={() => setSelectedCat('all')}>All</button>
-          {mockCategories.map(c => (
-            <button key={c.id} className={`cat-chip ${selectedCat === c.id ? 'active' : ''}`} onClick={() => setSelectedCat(c.id)}>
-              <span className="cat-chip-emoji">{c.icon}</span> {c.name}
+
+        {/* ── Category chips with inline subcategory tree ── */}
+        <div className="cat-chips-section">
+          <div className="cat-chips">
+            {/* All chip */}
+            <button
+              className={`cat-chip ${selectedCat === 'all' ? 'active' : ''}`}
+              onClick={() => handleCatTap('all')}
+            >
+              All
             </button>
-          ))}
+
+            {mockCategories.map(cat => {
+              const isSelected = selectedCat === cat.id;
+              const isExpanded = expandedCat === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  className={`cat-chip ${isSelected ? 'active' : ''} ${isExpanded ? 'expanded' : ''}`}
+                  onClick={() => handleCatTap(cat.id)}
+                >
+                  <span className="cat-chip-emoji">{cat.icon}</span>
+                  {cat.name}
+                  {cat.hasSubCategories && (
+                    <IonIcon
+                      icon={isExpanded ? chevronDown : chevronForwardOutline}
+                      className="cat-chip-arrow"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Inline subcategory tree panel ── */}
+          {expandedCat && mockSubCategories[expandedCat] && (
+            <div className="subcat-tree-panel">
+              <div className="subcat-tree-header">
+                <span className="subcat-tree-label">
+                  {mockCategories.find(c => c.id === expandedCat)?.icon}{' '}
+                  {mockCategories.find(c => c.id === expandedCat)?.name}
+                </span>
+                <span className="subcat-tree-all"
+                  onClick={() => { setSelectedSubCat(null); setSelectedCat(expandedCat); }}>
+                  View All
+                </span>
+              </div>
+              <div className="subcat-tree-items">
+                {mockSubCategories[expandedCat].map(sub => {
+                  const isSubSelected = selectedSubCat === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      className={`subcat-tree-item ${isSubSelected ? 'active' : ''}`}
+                      onClick={() => handleSubCatTap(sub.id)}
+                    >
+                      <span className="subcat-tree-icon">{sub.icon}</span>
+                      <span className="subcat-tree-name">{sub.name}</span>
+                      <span className="subcat-tree-count">{sub.count}</span>
+                      {isSubSelected && <span className="subcat-check">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Sort / Filter / View toolbar */}
+        {/* ── Sort / Filter / View toolbar ── */}
         <div className="toolbar-row">
           <button className="toolbar-btn" onClick={() => setShowSortSheet(true)}>
             Sort: <strong>{sortOptions.find(s => s.value === sort)?.label}</strong>
@@ -142,31 +231,32 @@ const ProductsPage: React.FC = () => {
           </button>
         </div>
 
-        {/* Active filter pills */}
+        {/* ── Active subcategory indicator ── */}
+        {selectedSubCat && (
+          <div className="active-subcat-bar">
+            <span>
+              {mockSubCategories[expandedCat!]?.find(s => s.id === selectedSubCat)?.icon}{' '}
+              {mockSubCategories[expandedCat!]?.find(s => s.id === selectedSubCat)?.name}
+            </span>
+            <button onClick={() => setSelectedSubCat(null)}>✕ Clear</button>
+          </div>
+        )}
+
+        {/* ── Active filter pills ── */}
         {activeFilterCount > 0 && (
           <div className="active-filters">
-            {priceRange[1] < 5000 && (
-              <span className="active-filter-pill">Under ₹{priceRange[1]} <button onClick={() => setPriceRange([0, 5000])}>×</button></span>
-            )}
-            {minDiscount > 0 && (
-              <span className="active-filter-pill">{minDiscount}%+ Off <button onClick={() => setMinDiscount(0)}>×</button></span>
-            )}
-            {inStockOnly && (
-              <span className="active-filter-pill">In Stock <button onClick={() => setInStockOnly(false)}>×</button></span>
-            )}
-            {selectedSizes.map(s => (
-              <span key={s} className="active-filter-pill">Size: {s} <button onClick={() => toggleSize(s)}>×</button></span>
-            ))}
-            {selectedWeights.map(w => (
-              <span key={w} className="active-filter-pill">{w} <button onClick={() => toggleWeight(w)}>×</button></span>
-            ))}
+            {priceRange[1] < 5000 && <span className="active-filter-pill">Under ₹{priceRange[1]} <button onClick={() => setPriceRange([0, 5000])}>×</button></span>}
+            {minDiscount > 0 && <span className="active-filter-pill">{minDiscount}%+ Off <button onClick={() => setMinDiscount(0)}>×</button></span>}
+            {inStockOnly && <span className="active-filter-pill">In Stock <button onClick={() => setInStockOnly(false)}>×</button></span>}
+            {selectedSizes.map(s => <span key={s} className="active-filter-pill">Size: {s} <button onClick={() => toggleSize(s)}>×</button></span>)}
+            {selectedWeights.map(w => <span key={w} className="active-filter-pill">{w} <button onClick={() => toggleWeight(w)}>×</button></span>)}
             <button className="clear-all-btn" onClick={resetFilters}>Clear All</button>
           </div>
         )}
 
         <p className="result-count">{filtered.length} {filtered.length === 1 ? 'product' : 'products'} found</p>
 
-        {/* Products grid / list */}
+        {/* ── Products ── */}
         {filtered.length === 0 ? (
           <div className="empty-state">
             <span>🔍</span>
@@ -240,10 +330,11 @@ const ProductsPage: React.FC = () => {
             ))}
           </div>
         )}
+
         <div style={{ height: 24 }} />
       </IonContent>
 
-      {/* ── Sort Sheet ── */}
+      {/* Sort Sheet */}
       {showSortSheet && (
         <div className="sheet-overlay" onClick={() => setShowSortSheet(false)}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -253,11 +344,8 @@ const ProductsPage: React.FC = () => {
               <IonIcon icon={closeOutline} onClick={() => setShowSortSheet(false)} />
             </div>
             {sortOptions.map(opt => (
-              <button
-                key={opt.value}
-                className={`sheet-option ${sort === opt.value ? 'selected' : ''}`}
-                onClick={() => { setSort(opt.value); setShowSortSheet(false); }}
-              >
+              <button key={opt.value} className={`sheet-option ${sort === opt.value ? 'selected' : ''}`}
+                onClick={() => { setSort(opt.value); setShowSortSheet(false); }}>
                 {opt.label}
                 {sort === opt.value && <span className="check-dot" />}
               </button>
@@ -266,7 +354,7 @@ const ProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Filter Sheet ── */}
+      {/* Filter Sheet */}
       {showFilterSheet && (
         <div className="sheet-overlay" onClick={() => setShowFilterSheet(false)}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -275,86 +363,51 @@ const ProductsPage: React.FC = () => {
               <h3>Filters</h3>
               <IonIcon icon={closeOutline} onClick={() => setShowFilterSheet(false)} />
             </div>
-
-            {/* Price Range */}
             <div className="filter-group">
               <p className="filter-label">Price Range: ₹{priceRange[0]} – ₹{priceRange[1]}</p>
-              <input
-                type="range" min={0} max={5000} step={100}
-                value={priceRange[1]}
-                onChange={e => setPriceRange([0, Number(e.target.value)])}
-                className="price-slider"
-              />
+              <input type="range" min={0} max={5000} step={100} value={priceRange[1]}
+                onChange={e => setPriceRange([0, Number(e.target.value)])} className="price-slider" />
               <div className="price-presets">
                 {[500, 1000, 2000, 5000].map(p => (
-                  <button key={p} className={`preset-chip ${priceRange[1] === p ? 'active' : ''}`} onClick={() => setPriceRange([0, p])}>
-                    Under ₹{p}
-                  </button>
+                  <button key={p} className={`preset-chip ${priceRange[1] === p ? 'active' : ''}`} onClick={() => setPriceRange([0, p])}>Under ₹{p}</button>
                 ))}
               </div>
             </div>
-
-            {/* Discount Filter */}
             <div className="filter-group">
               <p className="filter-label">Minimum Discount</p>
               <div className="filter-option-grid">
                 {discountOptions.map(opt => (
-                  <button
-                    key={opt.value}
-                    className={`filter-option-chip ${minDiscount === opt.value ? 'active' : ''}`}
-                    onClick={() => setMinDiscount(opt.value)}
-                  >
+                  <button key={opt.value} className={`filter-option-chip ${minDiscount === opt.value ? 'active' : ''}`} onClick={() => setMinDiscount(opt.value)}>
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Size Filter */}
             <div className="filter-group">
               <p className="filter-label">Size</p>
               <div className="size-chips">
                 {sizeOptions.map(size => (
-                  <button
-                    key={size}
-                    className={`size-chip ${selectedSizes.includes(size) ? 'active' : ''}`}
-                    onClick={() => toggleSize(size)}
-                  >
-                    {size}
-                  </button>
+                  <button key={size} className={`size-chip ${selectedSizes.includes(size) ? 'active' : ''}`} onClick={() => toggleSize(size)}>{size}</button>
                 ))}
               </div>
             </div>
-
-            {/* Weight / Unit Filter */}
             <div className="filter-group">
-              <p className="filter-label">Weight / Size / Unit</p>
+              <p className="filter-label">Weight / Unit</p>
               <div className="filter-option-grid">
                 {weightOptions.map(w => (
-                  <button
-                    key={w}
-                    className={`filter-option-chip ${selectedWeights.includes(w) ? 'active' : ''}`}
-                    onClick={() => toggleWeight(w)}
-                  >
-                    {w}
-                  </button>
+                  <button key={w} className={`filter-option-chip ${selectedWeights.includes(w) ? 'active' : ''}`} onClick={() => toggleWeight(w)}>{w}</button>
                 ))}
               </div>
             </div>
-
-            {/* In Stock */}
             <div className="filter-group">
               <label className="checkbox-row">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 <span>In Stock Only</span>
               </label>
             </div>
-
             <div className="sheet-actions">
               <button className="sheet-btn-outline" onClick={resetFilters}>Reset All</button>
-              <button className="sheet-btn-solid" onClick={() => setShowFilterSheet(false)}>
-                Show {filtered.length} Results
-              </button>
+              <button className="sheet-btn-solid" onClick={() => setShowFilterSheet(false)}>Show {filtered.length} Results</button>
             </div>
           </div>
         </div>

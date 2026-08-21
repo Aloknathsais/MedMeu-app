@@ -11,15 +11,47 @@ import banner2 from '../assets/banner2.jfif';
 import banner3 from '../assets/banner3.jfif';
 
 export const mockCategories = [
-  { id: '1', name: 'BP Monitors', icon: '❤️', color: '#FF5252', count: 24 },
-  { id: '2', name: 'Diabetic Care', icon: '🩸', color: '#FF6D00', count: 18 },
-  { id: '3', name: 'Lab Products', icon: '🔬', color: '#7C4DFF', count: 35 },
-  { id: '4', name: 'Ortho Care', icon: '🦴', color: '#00BCD4', count: 12 },
-  { id: '5', name: 'Baby Care', icon: '👶', color: '#E91E63', count: 29 },
-  { id: '6', name: 'Wellness', icon: '💊', color: '#00897B', count: 41 },
-  { id: '7', name: 'First Aid', icon: '🩺', color: '#2171a8', count: 16 },
-  { id: '8', name: 'Eye Care', icon: '👁️', color: '#558B2F', count: 8 },
+  { id: '1', name: 'BP Monitors', icon: '❤️', color: '#FF5252', count: 24, hasSubCategories: true },
+  { id: '2', name: 'Diabetic Care', icon: '🩸', color: '#FF6D00', count: 18, hasSubCategories: true },
+  { id: '3', name: 'Lab Products', icon: '🔬', color: '#7C4DFF', count: 35, hasSubCategories: true },
+  { id: '4', name: 'Ortho Care', icon: '🦴', color: '#00BCD4', count: 12, hasSubCategories: true },
+  { id: '5', name: 'Baby Care', icon: '👶', color: '#E91E63', count: 29, hasSubCategories: true },
+  { id: '6', name: 'Wellness', icon: '💊', color: '#00897B', count: 41, hasSubCategories: false },
+  { id: '7', name: 'First Aid', icon: '🩺', color: '#2171a8', count: 16, hasSubCategories: false },
+  { id: '8', name: 'Eye Care', icon: '👁️', color: '#558B2F', count: 8, hasSubCategories: false },
 ];
+
+export const mockSubCategories: Record<string, { id: string; name: string; icon: string; count: number }[]> = {
+  '1': [
+    { id: '1-1', name: 'Upper Arm Monitors', icon: '💪', count: 10 },
+    { id: '1-2', name: 'Wrist Monitors', icon: '⌚', count: 8 },
+    { id: '1-3', name: 'Digital BP Machines', icon: '📟', count: 6 },
+  ],
+  '2': [
+    { id: '2-1', name: 'Glucometers', icon: '🩺', count: 6 },
+    { id: '2-2', name: 'Test Strips', icon: '📋', count: 5 },
+    { id: '2-3', name: 'Insulin Syringes', icon: '💉', count: 4 },
+    { id: '2-4', name: 'Lancets & Lancing', icon: '🔹', count: 3 },
+  ],
+  '3': [
+    { id: '3-1', name: 'Pulse Oximeters', icon: '❤️', count: 8 },
+    { id: '3-2', name: 'Thermometers', icon: '🌡️', count: 9 },
+    { id: '3-3', name: 'Stethoscopes', icon: '🩺', count: 7 },
+    { id: '3-4', name: 'Lab Reagents', icon: '🧪', count: 11 },
+  ],
+  '4': [
+    { id: '4-1', name: 'Knee Supports', icon: '🦵', count: 4 },
+    { id: '4-2', name: 'Back Supports', icon: '🔙', count: 4 },
+    { id: '4-3', name: 'Cervical Collars', icon: '🔵', count: 2 },
+    { id: '4-4', name: 'Ankle & Elbow', icon: '💪', count: 2 },
+  ],
+  '5': [
+    { id: '5-1', name: 'Baby Monitors', icon: '📹', count: 5 },
+    { id: '5-2', name: 'Feeding & Nursing', icon: '🍼', count: 8 },
+    { id: '5-3', name: 'Baby Skincare', icon: '🧴', count: 9 },
+    { id: '5-4', name: 'Diapers & Wipes', icon: '🧷', count: 7 },
+  ],
+};
 
 export const mockProducts = [
   {
