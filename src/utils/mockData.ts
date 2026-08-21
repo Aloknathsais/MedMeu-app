@@ -58,6 +58,7 @@ export const mockProducts = [
     id: 'p1', name: 'Omron HEM-7120 Blood Pressure Monitor', price: 2499, originalPrice: 3200,
     discount: 22, rating: 4.5, reviews: 1240,
     image: product1,
+    image2: product2,
     category: '1', brand: 'Omron', inStock: true, unit: '1 Unit',
     description: 'Clinically validated upper arm blood pressure monitor with IntelliSense technology for accurate readings.',
     specs: ['IntelliSense Technology', 'Memory: 60 readings', 'Irregular heartbeat detection', 'USB powered'],

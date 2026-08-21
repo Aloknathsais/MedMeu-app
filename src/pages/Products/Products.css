@@ -544,3 +544,101 @@
 .size-chip.active { background: var(--medmeu-blue); border-color: var(--medmeu-blue); color: white; }
 .grid-unit { font-size: 10px; color: #aaa; margin: 0 0 6px; }
 .list-unit-tag { font-size: 10.5px; color: #aaa; margin: 2px 0 4px; }
+/* ══════════ Image Slider ══════════ */
+.img-slider-wrap {
+  position: relative;
+  width: 100%;
+  background: #f5f8fa;
+  overflow: hidden;
+  user-select: none;
+}
+
+.img-slider-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+.img-slider-track::-webkit-scrollbar { display: none; }
+
+.img-slider-slide {
+  min-width: 100%;
+  max-width: 100%;
+  scroll-snap-align: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 0;
+  height: 280px;
+}
+
+.img-slider-img {
+  width: 100%;
+  height: 240px;
+  object-fit: contain;
+  display: block;
+  padding: 0 20px;
+}
+
+/* Dot indicators */
+.img-slider-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0 14px;
+}
+.img-slider-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  border: none;
+  background: #d0d8e0;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.25s;
+}
+.img-slider-dot.active {
+  width: 20px;
+  border-radius: 4px;
+  background: var(--medmeu-blue);
+}
+
+/* Image count badge (top right) */
+.img-count-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,0,0,0.45);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+
+/* Left/Right arrow buttons */
+.slider-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-60%);
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 2;
+  line-height: 1;
+}
+.slider-arrow.left  { left: 10px; }
+.slider-arrow.right { right: 10px; }
+.slider-arrow:active { background: rgba(255,255,255,1); transform: translateY(-60%) scale(0.92); }

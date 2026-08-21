@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonBackButton, IonButtons,
   IonButton, IonIcon, IonBadge, IonToast,
@@ -22,22 +22,79 @@ const ProductDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'desc' | 'spec' | 'reviews'>('desc');
   const [activeImg, setActiveImg] = useState(0);
 
+  // Swipe tracking
+  const touchStartX = useRef<number>(0);
+  const touchEndX = useRef<number>(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
   const product = mockProducts.find(p => p.id === id);
   if (!product) {
     return (
       <IonPage>
-        <IonHeader><IonToolbar><IonButtons slot="start"><IonBackButton /></IonButtons></IonToolbar></IonHeader>
-        <IonContent><p style={{ padding: 24, textAlign: 'center', color: '#888' }}>Product not found</p></IonContent>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start"><IonBackButton /></IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <p style={{ padding: 24, textAlign: 'center', color: '#888' }}>Product not found</p>
+        </IonContent>
       </IonPage>
     );
   }
 
   const inWishlist = state.wishlist.includes(product.id);
-  const images = [product.image, product.image, product.image]; // placeholder gallery
+
+  // Use 3 copies of the same image as placeholder gallery
+  // Replace with product.images array when your API provides multiple images
+  const images = [product.image, product.image, product.image];
+
+  const goToSlide = (index: number) => {
+    setActiveImg(index);
+    if (sliderRef.current) {
+      sliderRef.current.scrollTo({
+        left: index * sliderRef.current.clientWidth,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.targetTouches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    touchEndX.current = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && activeImg < images.length - 1) {
+        goToSlide(activeImg + 1);
+      } else if (diff < 0 && activeImg > 0) {
+        goToSlide(activeImg - 1);
+      }
+    }
+  };
+
+  const handleSliderScroll = () => {
+    if (sliderRef.current) {
+      const idx = Math.round(sliderRef.current.scrollLeft / sliderRef.current.clientWidth);
+      setActiveImg(idx);
+    }
+  };
 
   const addToCart = () => {
     for (let i = 0; i < qty; i++) {
-      dispatch({ type: 'ADD_TO_CART', payload: { id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit } });
+      dispatch({
+        type: 'ADD_TO_CART',
+        payload: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: 1,
+          unit: product.unit,
+        },
+      });
     }
     setToastMsg('Added to cart!');
     setShowToast(true);
@@ -49,34 +106,83 @@ const ProductDetailPage: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar className="detail-toolbar">
-          <IonButtons slot="start"><IonBackButton color={'dark'}/></IonButtons>
+          <IonButtons slot="start"><IonBackButton color="dark" /></IonButtons>
           <IonButtons slot="end">
-            <IonButton><IonIcon icon={shareSocialOutline} color={'dark'}/></IonButton>
+            <IonButton><IonIcon icon={shareSocialOutline} color="dark" /></IonButton>
             <IonButton onClick={() => dispatch({ type: 'TOGGLE_WISHLIST', payload: product.id })}>
               <IonIcon icon={inWishlist ? heart : heartOutline} color={inWishlist ? 'danger' : 'dark'} />
             </IonButton>
             <IonButton onClick={() => history.push('/tabs/cart')}>
-              <IonIcon icon={cartOutline} color={'dark'}/>
-              {state.cartCount > 0 && <IonBadge color="danger" className="detail-cart-badge">{state.cartCount}</IonBadge>}
+              <IonIcon icon={cartOutline} color="dark" />
+              {state.cartCount > 0 && (
+                <IonBadge color="danger" className="detail-cart-badge">{state.cartCount}</IonBadge>
+              )}
             </IonButton>
           </IonButtons>
         </IonToolbar>
       </IonHeader>
 
       <IonContent fullscreen>
-        {/* Image gallery */}
-        <div className="detail-img-wrap">
-          {product.discount > 0 && <span className="detail-discount">{product.discount}% OFF</span>}
-          <img src={images[activeImg]} alt={product.name} className="detail-img" />
+
+        {/* ── Image Slider ── */}
+        <div className="img-slider-wrap">
+          {/* Discount badge */}
+          {product.discount > 0 && (
+            <span className="detail-discount">{product.discount}% OFF</span>
+          )}
+
+          {/* Image count indicator */}
+          <span className="img-count-badge">{activeImg + 1} / {images.length}</span>
+
+          {/* Slider track */}
+          <div
+            className="img-slider-track"
+            ref={sliderRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            onScroll={handleSliderScroll}
+          >
+            {images.map((img, i) => (
+              <div key={i} className="img-slider-slide">
+                <img src={img} alt={`${product.name} ${i + 1}`} className="img-slider-img" />
+              </div>
+            ))}
+          </div>
+
+          {/* Dot indicators */}
+          <div className="img-slider-dots">
+            {images.map((_, i) => (
+              <button
+                key={i}
+                className={`img-slider-dot ${i === activeImg ? 'active' : ''}`}
+                onClick={() => goToSlide(i)}
+              />
+            ))}
+          </div>
+
+          {/* Left / Right arrows */}
+          {activeImg > 0 && (
+            <button className="slider-arrow left" onClick={() => goToSlide(activeImg - 1)}>‹</button>
+          )}
+          {activeImg < images.length - 1 && (
+            <button className="slider-arrow right" onClick={() => goToSlide(activeImg + 1)}>›</button>
+          )}
         </div>
+
+        {/* ── Thumbnail strip ── */}
         <div className="detail-thumbs">
           {images.map((img, i) => (
-            <button key={i} className={`thumb-btn ${activeImg === i ? 'active' : ''}`} onClick={() => setActiveImg(i)}>
+            <button
+              key={i}
+              className={`thumb-btn ${activeImg === i ? 'active' : ''}`}
+              onClick={() => goToSlide(i)}
+            >
               <img src={img} alt="" />
             </button>
           ))}
         </div>
 
+        {/* ── Product Info ── */}
         <div className="detail-body">
           <div className="detail-top-row">
             <p className="detail-brand">{product.brand}</p>
@@ -84,6 +190,7 @@ const ProductDetailPage: React.FC = () => {
               {product.inStock ? '✓ In Stock' : 'Out of Stock'}
             </span>
           </div>
+
           <h2 className="detail-name">{product.name}</h2>
 
           <div className="detail-rating-row">
@@ -117,7 +224,7 @@ const ProductDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Trust badges row */}
+          {/* Trust badges */}
           <div className="detail-trust-row">
             <div className="trust-pill"><IonIcon icon={carOutline} /><span>Free Delivery</span></div>
             <div className="trust-pill"><IonIcon icon={refreshOutline} /><span>7-Day Return</span></div>
@@ -131,7 +238,9 @@ const ProductDetailPage: React.FC = () => {
             <button className={`detail-tab ${activeTab === 'reviews' ? 'active' : ''}`} onClick={() => setActiveTab('reviews')}>Reviews</button>
           </div>
 
-          {activeTab === 'desc' && <p className="detail-desc">{product.description}</p>}
+          {activeTab === 'desc' && (
+            <p className="detail-desc">{product.description}</p>
+          )}
 
           {activeTab === 'spec' && (
             <ul className="detail-specs">
@@ -146,7 +255,7 @@ const ProductDetailPage: React.FC = () => {
               <div className="review-score-block">
                 <span className="review-big-score">{product.rating}</span>
                 <div className="review-stars-row">
-                  {[1,2,3,4,5].map(n => (
+                  {[1, 2, 3, 4, 5].map(n => (
                     <IonIcon key={n} icon={starSharp} color={n <= Math.round(product.rating) ? 'warning' : 'medium'} />
                   ))}
                 </div>
@@ -171,7 +280,14 @@ const ProductDetailPage: React.FC = () => {
         </IonButton>
       </div>
 
-      <IonToast isOpen={showToast} message={toastMsg} duration={1500} onDidDismiss={() => setShowToast(false)} position="bottom" color="success" />
+      <IonToast
+        isOpen={showToast}
+        message={toastMsg}
+        duration={1500}
+        onDidDismiss={() => setShowToast(false)}
+        position="bottom"
+        color="success"
+      />
     </IonPage>
   );
 };
