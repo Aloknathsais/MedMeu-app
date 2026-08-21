@@ -281,3 +281,100 @@
 }
 .cta-cart { --border-radius: 12px; --color: #fff; --border-color: var(--medmeu-blue); flex: 1; }
 .cta-buy { --border-radius: 12px; --background: var(--medmeu-orange); flex: 1; }
+
+/* ══════════ Active filter pills row ══════════ */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 6px 16px 10px;
+  align-items: center;
+}
+.active-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #EEF5FB;
+  border: 1px solid #c8dff0;
+  color: var(--medmeu-blue);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px 4px 12px;
+  border-radius: 20px;
+}
+.active-filter-pill button {
+  background: none;
+  border: none;
+  color: var(--medmeu-blue);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  margin-left: 2px;
+}
+.clear-all-btn {
+  background: none;
+  border: none;
+  color: var(--medmeu-orange);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  padding: 4px 4px;
+}
+
+/* ══════════ Discount filter option grid ══════════ */
+.filter-option-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.filter-option-chip {
+  border: 1.5px solid #e0eaf3;
+  background: white;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: all 0.15s;
+}
+.filter-option-chip.active {
+  background: var(--medmeu-blue);
+  border-color: var(--medmeu-blue);
+  color: white;
+}
+
+/* ══════════ Size chips ══════════ */
+.size-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.size-chip {
+  border: 1.5px solid #e0eaf3;
+  background: white;
+  border-radius: 8px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #555;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.size-chip.active {
+  background: var(--medmeu-blue);
+  border-color: var(--medmeu-blue);
+  color: white;
+}
+
+/* ══════════ Unit tag on cards ══════════ */
+.grid-unit { font-size: 10px; color: #aaa; margin: 0 0 6px; }
+.list-unit-tag { font-size: 10.5px; color: #aaa; margin: 2px 0 4px; }

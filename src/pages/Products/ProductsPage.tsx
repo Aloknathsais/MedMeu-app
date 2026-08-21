@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonBackButton,
-  IonButtons, IonIcon, IonButton, IonSpinner,
+  IonButtons, IonIcon, IonButton,
 } from '@ionic/react';
 import {
   starSharp, heartOutline, heart, optionsOutline, closeOutline,
@@ -20,6 +20,16 @@ const sortOptions = [
   { value: 'newest', label: 'Newest First' },
 ];
 
+const discountOptions = [
+  { label: 'Any Discount', value: 0 },
+  { label: '10% & above', value: 10 },
+  { label: '20% & above', value: 20 },
+  { label: '30% & above', value: 30 },
+];
+
+const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL'];
+const weightOptions = ['100ml', '200ml', '400ml', '500g', '1kg', '1 Unit', '1 Kit', '1 Piece'];
+
 const ProductsPage: React.FC = () => {
   const history = useHistory();
   const { state, dispatch } = useApp();
@@ -31,6 +41,9 @@ const ProductsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [minDiscount, setMinDiscount] = useState(0);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
 
   const addToCart = (product: any, e: any) => {
     e.stopPropagation();
@@ -42,17 +55,44 @@ const ProductsPage: React.FC = () => {
     dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
   };
 
+  const toggleSize = (size: string) => {
+    setSelectedSizes(prev =>
+      prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]
+    );
+  };
+
+  const toggleWeight = (w: string) => {
+    setSelectedWeights(prev =>
+      prev.includes(w) ? prev.filter(x => x !== w) : [...prev, w]
+    );
+  };
+
+  const resetFilters = () => {
+    setPriceRange([0, 5000]);
+    setInStockOnly(false);
+    setMinDiscount(0);
+    setSelectedSizes([]);
+    setSelectedWeights([]);
+  };
+
   let filtered = mockProducts
     .filter(p => selectedCat === 'all' || p.category === selectedCat)
     .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()))
     .filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
-    .filter(p => !inStockOnly || p.inStock);
+    .filter(p => !inStockOnly || p.inStock)
+    .filter(p => minDiscount === 0 || p.discount >= minDiscount)
+    .filter(p => selectedWeights.length === 0 || selectedWeights.includes(p.unit));
 
   if (sort === 'price_asc') filtered = [...filtered].sort((a, b) => a.price - b.price);
   else if (sort === 'price_desc') filtered = [...filtered].sort((a, b) => b.price - a.price);
   else if (sort === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
 
-  const activeFilterCount = (inStockOnly ? 1 : 0) + (priceRange[1] < 5000 ? 1 : 0);
+  const activeFilterCount =
+    (inStockOnly ? 1 : 0) +
+    (priceRange[1] < 5000 ? 1 : 0) +
+    (minDiscount > 0 ? 1 : 0) +
+    (selectedSizes.length > 0 ? 1 : 0) +
+    (selectedWeights.length > 0 ? 1 : 0);
 
   return (
     <IonPage>
@@ -78,9 +118,7 @@ const ProductsPage: React.FC = () => {
       <IonContent fullscreen>
         {/* Category chips */}
         <div className="cat-chips">
-          <button className={`cat-chip ${selectedCat === 'all' ? 'active' : ''}`} onClick={() => setSelectedCat('all')}>
-            All
-          </button>
+          <button className={`cat-chip ${selectedCat === 'all' ? 'active' : ''}`} onClick={() => setSelectedCat('all')}>All</button>
           {mockCategories.map(c => (
             <button key={c.id} className={`cat-chip ${selectedCat === c.id ? 'active' : ''}`} onClick={() => setSelectedCat(c.id)}>
               <span className="cat-chip-emoji">{c.icon}</span> {c.name}
@@ -104,17 +142,37 @@ const ProductsPage: React.FC = () => {
           </button>
         </div>
 
+        {/* Active filter pills */}
+        {activeFilterCount > 0 && (
+          <div className="active-filters">
+            {priceRange[1] < 5000 && (
+              <span className="active-filter-pill">Under ₹{priceRange[1]} <button onClick={() => setPriceRange([0, 5000])}>×</button></span>
+            )}
+            {minDiscount > 0 && (
+              <span className="active-filter-pill">{minDiscount}%+ Off <button onClick={() => setMinDiscount(0)}>×</button></span>
+            )}
+            {inStockOnly && (
+              <span className="active-filter-pill">In Stock <button onClick={() => setInStockOnly(false)}>×</button></span>
+            )}
+            {selectedSizes.map(s => (
+              <span key={s} className="active-filter-pill">Size: {s} <button onClick={() => toggleSize(s)}>×</button></span>
+            ))}
+            {selectedWeights.map(w => (
+              <span key={w} className="active-filter-pill">{w} <button onClick={() => toggleWeight(w)}>×</button></span>
+            ))}
+            <button className="clear-all-btn" onClick={resetFilters}>Clear All</button>
+          </div>
+        )}
+
         <p className="result-count">{filtered.length} {filtered.length === 1 ? 'product' : 'products'} found</p>
 
-        {/* Product list/grid */}
+        {/* Products grid / list */}
         {filtered.length === 0 ? (
           <div className="empty-state">
             <span>🔍</span>
             <h3>No products found</h3>
             <p>Try adjusting filters or search terms</p>
-            <IonButton size="small" fill="outline" onClick={() => { setSelectedCat('all'); setSearch(''); setInStockOnly(false); setPriceRange([0, 5000]); }}>
-              Clear all filters
-            </IonButton>
+            <IonButton size="small" fill="outline" onClick={resetFilters}>Clear all filters</IonButton>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="products-grid-view">
@@ -140,6 +198,7 @@ const ProductsPage: React.FC = () => {
                     <span className="grid-price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="grid-original">₹{product.originalPrice}</span>}
                   </div>
+                  <p className="grid-unit">{product.unit}</p>
                   {product.inStock ? (
                     <button className="grid-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
                   ) : (
@@ -161,6 +220,7 @@ const ProductsPage: React.FC = () => {
                     <IonIcon icon={starSharp} color="warning" style={{ fontSize: 13 }} />
                     <span>{product.rating} ({product.reviews})</span>
                   </div>
+                  <p className="list-unit-tag">{product.unit}</p>
                   <div className="list-price">
                     <span className="price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="original-price">₹{product.originalPrice}</span>}
@@ -183,7 +243,7 @@ const ProductsPage: React.FC = () => {
         <div style={{ height: 24 }} />
       </IonContent>
 
-      {/* Sort Bottom Sheet */}
+      {/* ── Sort Sheet ── */}
       {showSortSheet && (
         <div className="sheet-overlay" onClick={() => setShowSortSheet(false)}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -206,7 +266,7 @@ const ProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Bottom Sheet */}
+      {/* ── Filter Sheet ── */}
       {showFilterSheet && (
         <div className="sheet-overlay" onClick={() => setShowFilterSheet(false)}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -216,6 +276,7 @@ const ProductsPage: React.FC = () => {
               <IonIcon icon={closeOutline} onClick={() => setShowFilterSheet(false)} />
             </div>
 
+            {/* Price Range */}
             <div className="filter-group">
               <p className="filter-label">Price Range: ₹{priceRange[0]} – ₹{priceRange[1]}</p>
               <input
@@ -233,6 +294,55 @@ const ProductsPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Discount Filter */}
+            <div className="filter-group">
+              <p className="filter-label">Minimum Discount</p>
+              <div className="filter-option-grid">
+                {discountOptions.map(opt => (
+                  <button
+                    key={opt.value}
+                    className={`filter-option-chip ${minDiscount === opt.value ? 'active' : ''}`}
+                    onClick={() => setMinDiscount(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Size Filter */}
+            <div className="filter-group">
+              <p className="filter-label">Size</p>
+              <div className="size-chips">
+                {sizeOptions.map(size => (
+                  <button
+                    key={size}
+                    className={`size-chip ${selectedSizes.includes(size) ? 'active' : ''}`}
+                    onClick={() => toggleSize(size)}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Weight / Unit Filter */}
+            <div className="filter-group">
+              <p className="filter-label">Weight / Size / Unit</p>
+              <div className="filter-option-grid">
+                {weightOptions.map(w => (
+                  <button
+                    key={w}
+                    className={`filter-option-chip ${selectedWeights.includes(w) ? 'active' : ''}`}
+                    onClick={() => toggleWeight(w)}
+                  >
+                    {w}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* In Stock */}
             <div className="filter-group">
               <label className="checkbox-row">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
@@ -241,9 +351,7 @@ const ProductsPage: React.FC = () => {
             </div>
 
             <div className="sheet-actions">
-              <button className="sheet-btn-outline" onClick={() => { setPriceRange([0, 5000]); setInStockOnly(false); }}>
-                Reset
-              </button>
+              <button className="sheet-btn-outline" onClick={resetFilters}>Reset All</button>
               <button className="sheet-btn-solid" onClick={() => setShowFilterSheet(false)}>
                 Show {filtered.length} Results
               </button>
