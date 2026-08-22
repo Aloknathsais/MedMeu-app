@@ -7,7 +7,6 @@ import {
   IonTitle,
   IonButton,
   IonIcon,
-  IonToast,
   IonBackButton,
   IonButtons,
 } from "@ionic/react";
@@ -32,6 +31,8 @@ import {
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
+// import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
+import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import "./Cart.css";
 
 /* ── Mock promo codes ── */
@@ -98,11 +99,14 @@ const tagIcon: Record<string, any> = {
 const CartPage: React.FC = () => {
   const history = useHistory();
   const { state, dispatch } = useApp();
-  const [showToast, setShowToast] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi" | "card">(
     "cod",
   );
   const [placing, setPlacing] = useState(false);
+  const [orderSummary, setOrderSummary] = useState<{
+    orderId: string;
+    amount: number;
+  } | null>(null);
 
   // Address state
   const [addresses, setAddresses] = useState<Address[]>(MOCK_ADDRESSES);
@@ -248,10 +252,15 @@ const CartPage: React.FC = () => {
   const placeOrder = async () => {
     setPlacing(true);
     await new Promise((r) => setTimeout(r, 900));
+    const orderId = `MED${Date.now().toString().slice(-8)}`;
+    setOrderSummary({ orderId, amount: finalTotal });
     dispatch({ type: "CLEAR_CART" });
     setPlacing(false);
-    setShowToast(true);
-    setTimeout(() => history.push("/tabs/orders"), 1400);
+  };
+
+  const handleConfirmationFinish = () => {
+    setOrderSummary(null);
+    history.push("/tabs/orders");
   };
 
   const updateNew =
@@ -535,15 +544,14 @@ const CartPage: React.FC = () => {
           </>
         )}
 
-        <IonToast
-          isOpen={showToast}
-          message="Order placed successfully! 🎉"
-          duration={1400}
-          position="bottom"
-          color="success"
-          onDidDismiss={() => setShowToast(false)}
-        />
       </IonContent>
+
+      <OrderConfirmation
+        isOpen={!!orderSummary}
+        amount={orderSummary?.amount ?? 0}
+        orderId={orderSummary?.orderId ?? ""}
+        onFinish={handleConfirmationFinish}
+      />
 
       {state.cartItems.length > 0 && (
         <div className="checkout-bar">
