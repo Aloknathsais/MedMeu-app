@@ -173,3 +173,176 @@
 .order-action-btn.outline.danger { border-color: #C62828; color: #C62828; }
 .order-action-btn.solid { background: var(--medmeu-orange); border: none; color: white; }
 .order-action-btn ion-icon { font-size: 15px; }
+/* ══════════ Delivery strip ══════════ */
+.order-delivery-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #F0F6FA;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.order-delivery-strip ion-icon {
+  font-size: 17px;
+  color: var(--medmeu-blue);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.delivery-strip-label { font-size: 10.5px; color: #888; margin: 0 0 2px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.delivery-strip-addr { font-size: 12.5px; color: #1a1a2e; font-weight: 600; margin: 0; }
+
+/* ══════════ Track Order toggle button ══════════ */
+.track-toggle-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border: 1.5px solid #e0eaf3;
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-family: inherit;
+  margin-bottom: 10px;
+  transition: background 0.15s;
+}
+.track-toggle-btn:active { background: #F8FAFB; }
+.track-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--medmeu-blue);
+}
+.track-toggle-left ion-icon { font-size: 18px; }
+.track-toggle-chevron { font-size: 17px; color: var(--medmeu-blue); transition: transform 0.2s; }
+
+/* ══════════ Vertical tracking timeline ══════════ */
+.tracking-timeline {
+  background: white;
+  border: 1.5px solid #eef2f6;
+  border-radius: 14px;
+  padding: 16px 14px 10px;
+  margin-bottom: 14px;
+  animation: expandDown 0.2s ease;
+}
+
+.timeline-step {
+  display: flex;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 4px;
+}
+
+/* Vertical connecting line */
+.timeline-line {
+  position: absolute;
+  left: 15px;
+  top: 28px;
+  width: 2px;
+  height: calc(100% - 4px);
+  background: #e8eff5;
+  z-index: 0;
+  min-height: 28px;
+}
+.timeline-line.filled { background: var(--medmeu-blue); }
+
+/* Icon */
+.timeline-icon-wrap {
+  flex-shrink: 0;
+  z-index: 1;
+  padding-bottom: 20px;
+}
+.timeline-icon {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+.timeline-icon.done {
+  background: var(--medmeu-blue);
+  color: white;
+  box-shadow: 0 2px 8px rgba(33,113,168,0.25);
+}
+.timeline-icon.pending {
+  background: #f0f4f8;
+  color: #ccc;
+  border: 2px solid #e0eaf3;
+}
+.timeline-icon.current {
+  background: var(--medmeu-blue);
+  color: white;
+  box-shadow: 0 0 0 5px rgba(33,113,168,0.15);
+  animation: iconPulse 1.8s ease-in-out infinite;
+}
+@keyframes iconPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(33,113,168,0.15); }
+  50%       { box-shadow: 0 0 0 8px rgba(33,113,168,0.08); }
+}
+
+/* Content */
+.timeline-content {
+  flex: 1;
+  padding-bottom: 20px;
+  min-width: 0;
+}
+.timeline-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.timeline-label {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.timeline-label.done    { color: #1a1a2e; }
+.timeline-label.pending { color: #bbb; }
+.timeline-current-pill {
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--medmeu-orange);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+.timeline-time {
+  font-size: 10px;
+  color: #999;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.timeline-desc {
+  font-size: 11.5px;
+  margin: 0;
+  line-height: 1.5;
+}
+.timeline-desc.done    { color: #666; }
+.timeline-desc.pending { color: #ccc; }
+
+/* Estimated delivery */
+.estimated-delivery {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FFF3E0;
+  color: var(--medmeu-orange);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+.estimated-delivery ion-icon { font-size: 17px; flex-shrink: 0; }
+.estimated-delivery strong { color: #1a1a2e; }
