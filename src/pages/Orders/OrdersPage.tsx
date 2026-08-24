@@ -282,17 +282,22 @@ const OrdersPage: React.FC = () => {
                       <div className="order-actions">
                         {order.status === 'Delivered' && (
                           <>
-                            <button className="order-action-btn outline">
-                              <IonIcon icon={downloadOutline} /> Invoice
+                            <button className="order-action-btn outline"
+                              onClick={() => history.push(`/order/${order.id}`)}>
+                              View Details
                             </button>
                             <button className="order-action-btn outline">
-                              <IonIcon icon={starOutline} /> Rate
+                              <IonIcon icon={downloadOutline} /> Invoice
                             </button>
                             <button className="order-action-btn solid">Buy Again</button>
                           </>
                         )}
                         {(order.status === 'Processing' || order.status === 'In Transit') && (
                           <>
+                            <button className="order-action-btn outline"
+                              onClick={() => history.push(`/order/${order.id}`)}>
+                              View Details
+                            </button>
                             <button className="order-action-btn outline danger">Cancel</button>
                             <button className="order-action-btn outline">
                               <IonIcon icon={callOutline} /> Support
@@ -300,7 +305,13 @@ const OrdersPage: React.FC = () => {
                           </>
                         )}
                         {order.status === 'Cancelled' && (
-                          <button className="order-action-btn solid">Buy Again</button>
+                          <>
+                            <button className="order-action-btn outline"
+                              onClick={() => history.push(`/order/${order.id}`)}>
+                              View Details
+                            </button>
+                            <button className="order-action-btn solid">Buy Again</button>
+                          </>
                         )}
                       </div>
                     </div>
