@@ -24,6 +24,7 @@ import ProfilePage from './pages/Profile/ProfilePage';
 import WishlistPage from './pages/Profile/WishlistPage';
 import AboutDrawer from './components/AboutDrawer';
 import OrderDetailPage from './pages/Orders/OrderDetailPage';
+import CancelOrderPage from './pages/Orders/CancelOrder/CancelOrderPage';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -106,6 +107,7 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/wishlist"  component={WishlistPage} />
         <Route exact path="/product/:id" component={ProductDetailPage} />
         <Route exact path="/order/:id" component={OrderDetailPage} />
+        <Route exact path="/order/:id/cancel" component={CancelOrderPage} />
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />

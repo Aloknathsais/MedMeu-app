@@ -315,7 +315,10 @@ const OrderDetailPage: React.FC = () => {
               <button className="od-action-btn solid">
                 <IonIcon icon={callOutline} /> Contact Support
               </button>
-              <button className="od-action-btn outline danger">Cancel Order</button>
+              <button className="od-action-btn danger"
+                onClick={() => history.push(`/order/${order.id}/cancel`)}>
+                Cancel Order
+              </button>
             </>
           )}
           {order.status === 'Cancelled' && (

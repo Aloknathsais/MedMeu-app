@@ -298,7 +298,10 @@ const OrdersPage: React.FC = () => {
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn outline danger">Cancel</button>
+                            <button className="order-action-btn outline danger"
+                              onClick={() => history.push(`/order/${order.id}/cancel`)}>
+                              Cancel Order
+                            </button>
                             <button className="order-action-btn outline">
                               <IonIcon icon={callOutline} /> Support
                             </button>
