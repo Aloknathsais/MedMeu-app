@@ -1,0 +1,237 @@
+/* ══════════ Header buttons ══════════ */
+.ab-back-btn {
+  background: none; border: none;
+  color: white; font-size: 26px; font-weight: 300;
+  cursor: pointer; padding: 0 8px;
+  line-height: 1; display: flex; align-items: center;
+}
+.ab-add-header-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,0.15);
+  border: 1.5px solid rgba(255,255,255,0.35);
+  color: white; font-size: 13px; font-weight: 700;
+  padding: 5px 12px; border-radius: 20px;
+  cursor: pointer; font-family: inherit;
+}
+.ab-add-header-btn ion-icon { font-size: 15px; }
+.ab-save-header-btn {
+  background: none; border: none;
+  color: white; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  padding: 4px 12px;
+}
+
+/* ══════════ Empty state ══════════ */
+.ab-empty {
+  text-align: center;
+  padding: 80px 32px 40px;
+}
+.ab-empty-icon {
+  width: 90px; height: 90px;
+  background: #F0F6FA; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 40px; color: var(--medmeu-blue);
+}
+.ab-empty h3 { font-size: 18px; font-weight: 800; color: #1a1a2e; margin: 0 0 8px; }
+.ab-empty p  { font-size: 13.5px; color: #888; margin: 0 0 24px; line-height: 1.6; }
+
+/* ══════════ Address list ══════════ */
+.ab-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ab-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: var(--medmeu-card-shadow);
+  overflow: hidden;
+  border: 1.5px solid #eef2f6;
+  position: relative;
+  transition: border-color 0.15s;
+}
+.ab-card.default { border-color: var(--medmeu-blue); }
+
+/* Default badge */
+.ab-default-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(90deg, var(--medmeu-blue), var(--medmeu-orange));
+  color: white;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 5px 14px;
+}
+.ab-default-badge ion-icon { font-size: 13px; }
+
+/* Card body */
+.ab-card-body { padding: 14px 14px 10px; }
+.ab-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ab-tag-row  { display: flex; align-items: center; gap: 6px; }
+.ab-tag-icon-wrap {
+  font-size: 16px;
+  color: var(--medmeu-blue);
+}
+.ab-tag-chip {
+  font-size: 10px; font-weight: 700; padding: 2px 9px; border-radius: 10px;
+}
+.ab-tag-chip.home   { background: #E8F5E9; color: #2E7D32; }
+.ab-tag-chip.office { background: #EEF5FB; color: var(--medmeu-blue); }
+.ab-tag-chip.other  { background: #FFF3E0; color: var(--medmeu-orange); }
+.ab-card-name  { font-size: 13.5px; font-weight: 700; color: #1a1a2e; margin: 0; }
+.ab-card-line  { font-size: 12.5px; color: #555; margin: 0 0 2px; line-height: 1.5; }
+.ab-card-phone { font-size: 12px; color: #888; margin: 6px 0 0; }
+
+/* Action row */
+.ab-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #f0f4f8;
+  background: #fafbfc;
+  padding: 2px 4px;
+}
+.ab-action-link {
+  background: none; border: none;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  padding: 9px 10px;
+}
+.ab-action-link.default-link { color: var(--medmeu-orange); }
+.ab-action-right {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-left: auto;
+}
+.ab-icon-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none;
+  font-size: 12px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  padding: 9px 10px;
+  transition: background 0.15s;
+}
+.ab-icon-btn:active { background: #f0f4f8; }
+.ab-icon-btn ion-icon { font-size: 14px; }
+.ab-icon-btn.edit   { color: var(--medmeu-blue); }
+.ab-icon-btn.delete { color: #C62828; }
+.ab-action-sep { width: 1px; height: 20px; background: #eef2f6; }
+
+/* Delete confirm strip */
+.ab-delete-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #f0f4f8;
+  background: #fff5f5;
+  padding: 10px 14px;
+  gap: 10px;
+}
+.ab-delete-confirm-left {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 600; color: #C62828;
+}
+.ab-delete-confirm-left ion-icon { font-size: 16px; }
+.ab-delete-confirm-btns { display: flex; gap: 8px; }
+.ab-del-cancel {
+  border: 1.5px solid #ddd; background: white; color: #666;
+  font-size: 12px; font-weight: 700; padding: 6px 14px;
+  border-radius: 8px; cursor: pointer; font-family: inherit;
+}
+.ab-del-confirm {
+  border: none; background: #C62828; color: white;
+  font-size: 12px; font-weight: 700; padding: 6px 14px;
+  border-radius: 8px; cursor: pointer; font-family: inherit;
+}
+
+/* Add more button */
+.ab-add-more-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%;
+  border: 1.5px dashed var(--medmeu-blue);
+  background: #F0F6FA;
+  color: var(--medmeu-blue);
+  font-size: 14px; font-weight: 700;
+  padding: 14px; border-radius: 14px;
+  cursor: pointer; font-family: inherit;
+}
+.ab-add-more-btn ion-icon { font-size: 18px; }
+
+/* ══════════ Form ══════════ */
+.ab-form { padding: 16px; display: flex; flex-direction: column; gap: 0; }
+
+.ab-form-section { margin-bottom: 20px; }
+.ab-form-section-title {
+  font-size: 12px; font-weight: 800;
+  color: var(--medmeu-blue);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  margin: 0 0 12px;
+}
+
+/* Address type selector */
+.ab-tag-selector { display: flex; gap: 10px; }
+.ab-tag-opt {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1.5px solid #e0eaf3; background: white;
+  border-radius: 12px; padding: 12px 8px;
+  font-size: 13px; font-weight: 700; color: #555;
+  cursor: pointer; font-family: inherit;
+  transition: all 0.15s;
+}
+.ab-tag-opt ion-icon { font-size: 16px; }
+.ab-tag-opt.active { border-color: var(--medmeu-blue); background: #EEF5FB; color: var(--medmeu-blue); }
+
+/* Fields */
+.ab-form-row { display: flex; gap: 12px; }
+.ab-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; flex: 1; }
+.ab-field.half { flex: 1; width: 48%;}
+.ab-label { font-size: 12.5px; font-weight: 700; color: #444; }
+.ab-required { color: var(--medmeu-orange); margin-left: 2px; }
+
+.ab-input-wrap {
+  border: 1.5px solid #e0eaf3;
+  background: white;
+  border-radius: 12px;
+  padding: 0 14px;
+  height: 48px;
+  display: flex; align-items: center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.ab-input-wrap:focus-within {
+  border-color: var(--medmeu-blue);
+  box-shadow: 0 0 0 3px rgba(33,113,168,0.10);
+}
+.ab-input-wrap.has-error { border-color: #C62828; background: #fff8f8; }
+.ab-input {
+  flex: 1; border: none; outline: none;
+  background: transparent; font-size: 14px;
+  color: #1a1a2e; font-family: inherit; height: 100%;
+}
+.ab-input::placeholder { color: #bbb; }
+
+.ab-field-error {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: #C62828; font-weight: 600;
+}
+.ab-field-error ion-icon { font-size: 13px; }
+
+/* Form action buttons */
+.ab-form-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.ab-btn-solid {
+  width: 100%; border: none;
+  background: linear-gradient(135deg, var(--medmeu-blue) 0%, var(--medmeu-orange) 100%);
+  color: white; border-radius: 14px; padding: 15px;
+  font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+  box-shadow: 0 4px 14px rgba(33,113,168,0.20);
+}
+.ab-btn-outline {
+  width: 100%; border: 1.5px solid #e0eaf3; background: white;
+  color: #666; border-radius: 14px; padding: 14px;
+  font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+}

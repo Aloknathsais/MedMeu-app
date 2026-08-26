@@ -30,7 +30,7 @@ const ProfilePage: React.FC = () => {
 
   const menuItems = [
     { icon: personOutline, label: 'Edit Profile', sub: 'Update your personal info', action: () => history.push('/profile/edit') },
-    { icon: locationOutline, label: 'Address Book', sub: 'Manage delivery addresses', action: () => {} },
+    { icon: locationOutline, label: 'Address Book', sub: 'Manage delivery addresses', action: () => history.push('/profile/address-book') },
     { icon: heartOutline, label: 'My Wishlist', sub: `${state.wishlist.length} items saved`, action: () => history.push('/wishlist') },
     { icon: notificationsOutline, label: 'Notifications', sub: 'Manage alerts & reminders', action: () => {} },
     { icon: shieldOutline, label: 'Privacy & Security', sub: 'Control your data', action: () => {} },

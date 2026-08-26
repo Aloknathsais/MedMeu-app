@@ -26,6 +26,7 @@ import AboutDrawer from './components/AboutDrawer';
 import OrderDetailPage from './pages/Orders/OrderDetailPage';
 import CancelOrderPage from './pages/Orders/CancelOrder/CancelOrderPage';
 import EditProfilePage from './pages/Profile/EditProfile/EditProfilePage';
+import AddressBookPage from './pages/Profile/AddressBook/AddressBookPage';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -110,6 +111,7 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/order/:id" component={OrderDetailPage} />
         <Route exact path="/order/:id/cancel" component={CancelOrderPage} />
         <Route exact path="/profile/edit" component={EditProfilePage} />  
+        <Route exact path="/profile/address-book" component={AddressBookPage} />
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
