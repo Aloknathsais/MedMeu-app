@@ -39,6 +39,7 @@ import '@ionic/react/css/structure.css';
 import '@ionic/react/css/typography.css';
 import './theme/variables.css';
 import './index.css';
+import HelpSupportPage from './pages/Profile/HelpSupport/HelpSupportPage';
 
 setupIonicReact({ mode: 'md' });
 
@@ -122,6 +123,7 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/privacy" component={PrivacySecurityPage} />
         <Route exact path="/privacy/change-password" component={ChangePasswordPage} />
         <Route exact path="/privacy/sessions" component={ActiveSessionsPage} />
+        <Route exact path="/profile/help-support" component={HelpSupportPage} />
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
