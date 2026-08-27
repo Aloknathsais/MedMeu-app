@@ -33,7 +33,7 @@ const ProfilePage: React.FC = () => {
     { icon: locationOutline, label: 'Address Book', sub: 'Manage delivery addresses', action: () => history.push('/profile/address-book') },
     { icon: heartOutline, label: 'My Wishlist', sub: `${state.wishlist.length} items saved`, action: () => history.push('/wishlist') },
     { icon: notificationsOutline, label: 'Notifications', sub: 'Manage alerts & reminders', action: () => history.push('/notifications') },
-    { icon: shieldOutline, label: 'Privacy & Security', sub: 'Control your data', action: () => {} },
+    { icon: shieldOutline, label: 'Privacy & Security', sub: 'Control your data', action: () => history.push('/privacy') },
     { icon: starOutline, label: 'Rate the App', sub: 'Tell us what you think', action: () => {} },
     { icon: helpCircleOutline, label: 'Help & Support', sub: 'FAQs, chat with us', action: () => {} },
   ];

@@ -29,6 +29,9 @@ import EditProfilePage from './pages/Profile/EditProfile/EditProfilePage';
 import AddressBookPage from './pages/Profile/AddressBook/AddressBookPage';
 import NotificationsPage from './pages/Profile/Notifications/NotificationsPage';
 import NotificationSettings from './pages/Profile/Notifications/NotificationSettings';
+import PrivacySecurityPage from './pages/Profile/PrivacySecurity/PrivacySecurityPage';
+import ChangePasswordPage from './pages/Profile/PrivacySecurity/ChangePasswordPage';
+import ActiveSessionsPage from './pages/Profile/PrivacySecurity/ActiveSessionsPage';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -116,6 +119,9 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/profile/address-book" component={AddressBookPage} />
         <Route exact path="/notifications" component={NotificationsPage} />
         <Route exact path="/notifications/settings" component={NotificationSettings} />
+        <Route exact path="/privacy" component={PrivacySecurityPage} />
+        <Route exact path="/privacy/change-password" component={ChangePasswordPage} />
+        <Route exact path="/privacy/sessions" component={ActiveSessionsPage} />
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
