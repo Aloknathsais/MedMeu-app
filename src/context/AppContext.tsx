@@ -24,8 +24,24 @@ type Action =
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_WISHLIST'; payload: string };
 
+/**
+ * Was: user always started as `null`, even when isAuthenticated was
+ * already true from a cached token — so on refresh the app "knew" you
+ * were logged in but had nothing to show for your profile until
+ * something re-fetched it. Hydrate from the same localStorage cache
+ * authService already writes to on login/register, same as
+ * isAuthenticated already does below.
+ */
+function getCachedUser(): User | null {
+  try {
+    return JSON.parse(localStorage.getItem('medmeu_user') || 'null');
+  } catch {
+    return null;
+  }
+}
+
 const initialState: AppState = {
-  user: null,
+  user: getCachedUser(),
   isAuthenticated: !!localStorage.getItem('medmeu_token'),
   cartItems: [],
   wishlist: [],

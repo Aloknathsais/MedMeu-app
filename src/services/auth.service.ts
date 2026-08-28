@@ -1,34 +1,87 @@
 import api from './api';
 
-export interface LoginPayload { email: string; password: string; }
-export interface RegisterPayload { name: string; email: string; phone: string; password: string; }
+export interface LoginPayload {
+  /** Sent to the backend as `email`. Only email lookups work today — see the note in LoginPage.tsx. */
+  usernameOrEmail: string;
+  password: string;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  /** Drug License / Clinical Establishment No. / GST No. — optional. */
+  license?: string;
+}
+
+/** What the Express backend actually returns for a customer (see wc-backend/src/services/auth.service.js#sanitizeCustomer). */
+interface BackendCustomer {
+  id: number;
+  email: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  license?: string;
+  billing?: Record<string, any>;
+  shipping?: Record<string, any>;
+}
+
+/** Matches the `User` interface already defined in AppContext.tsx. */
+interface MappedUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  avatar?: string;
+}
+
+function mapCustomerToUser(customer: BackendCustomer): MappedUser {
+  return {
+    id: String(customer.id),
+    name: customer.username || customer.firstName || customer.email,
+    email: customer.email,
+    phone: customer.phone || '',
+  };
+}
 
 export const authService = {
   async login(payload: LoginPayload) {
-    const { data } = await api.post('/auth/login', payload);
-    localStorage.setItem('medmeu_token', data.token);
-    localStorage.setItem('medmeu_user', JSON.stringify(data.user));
-    return data;
+    // Backend wraps every response as { success, data: {...} } — unwrap it here.
+    const { data: envelope } = await api.post('/auth/login', {
+      email: payload.usernameOrEmail,
+      password: payload.password,
+    });
+    const { token, customer } = envelope.data;
+    const user = mapCustomerToUser(customer);
+
+    localStorage.setItem('medmeu_token', token);
+    localStorage.setItem('medmeu_user', JSON.stringify(user));
+    return { token, user };
   },
+
   async register(payload: RegisterPayload) {
-    const { data } = await api.post('/auth/register', payload);
-    return data;
+    const { data: envelope } = await api.post('/auth/register', {
+      username: payload.username,
+      email: payload.email,
+      password: payload.password,
+      license: payload.license || undefined,
+    });
+    const { token, customer } = envelope.data;
+    const user = mapCustomerToUser(customer);
+
+    // Backend register already returns a usable token — log the user
+    // straight in instead of forcing a second login step.
+    localStorage.setItem('medmeu_token', token);
+    localStorage.setItem('medmeu_user', JSON.stringify(user));
+    return { token, user };
   },
-  async sendOtp(phone: string) {
-    const { data } = await api.post('/auth/send-otp', { phone });
-    return data;
-  },
-  async verifyOtp(phone: string, otp: string) {
-    const { data } = await api.post('/auth/verify-otp', { phone, otp });
-    localStorage.setItem('medmeu_token', data.token);
-    localStorage.setItem('medmeu_user', JSON.stringify(data.user));
-    return data;
-  },
+
   logout() {
     localStorage.removeItem('medmeu_token');
     localStorage.removeItem('medmeu_user');
   },
-  getUser() {
+  getUser(): MappedUser | null {
     try { return JSON.parse(localStorage.getItem('medmeu_user') || 'null'); }
     catch { return null; }
   },

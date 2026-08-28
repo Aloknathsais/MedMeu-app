@@ -12,6 +12,7 @@ import {
 } from 'ionicons/icons';
 import { App as CapacitorApp } from '@capacitor/app';
 import { AppProvider, useApp } from './context/AppContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import SplashScreen from './pages/Auth/SplashScreen';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
@@ -54,8 +55,9 @@ const TabsLayout: React.FC = () => {
             <Route exact path="/tabs/home"     component={HomePage} />
             <Route exact path="/tabs/products" component={ProductsPage} />
             <Route exact path="/tabs/cart"     component={CartPage} />
-            <Route exact path="/tabs/orders"   component={OrdersPage} />
-            <Route exact path="/tabs/profile"  component={ProfilePage} />
+            {/* Orders and Profile require login — browsing home/products/cart doesn't */}
+            <ProtectedRoute exact path="/tabs/orders"  component={OrdersPage} />
+            <ProtectedRoute exact path="/tabs/profile" component={ProfilePage} />
             <Redirect exact from="/tabs" to="/tabs/home" />
           </IonRouterOutlet>
 
@@ -112,18 +114,21 @@ const AppRoutes: React.FC = () => {
         <Route exact path="/splash"    component={SplashScreen} />
         <Route exact path="/login"     component={LoginPage} />
         <Route exact path="/register"  component={RegisterPage} />
-        <Route exact path="/wishlist"  component={WishlistPage} />
         <Route exact path="/product/:id" component={ProductDetailPage} />
-        <Route exact path="/order/:id" component={OrderDetailPage} />
-        <Route exact path="/order/:id/cancel" component={CancelOrderPage} />
-        <Route exact path="/profile/edit" component={EditProfilePage} />  
-        <Route exact path="/profile/address-book" component={AddressBookPage} />
-        <Route exact path="/notifications" component={NotificationsPage} />
-        <Route exact path="/notifications/settings" component={NotificationSettings} />
-        <Route exact path="/privacy" component={PrivacySecurityPage} />
-        <Route exact path="/privacy/change-password" component={ChangePasswordPage} />
-        <Route exact path="/privacy/sessions" component={ActiveSessionsPage} />
-        <Route exact path="/profile/help-support" component={HelpSupportPage} />
+
+        {/* Everything below requires login */}
+        <ProtectedRoute exact path="/wishlist"  component={WishlistPage} />
+        <ProtectedRoute exact path="/order/:id" component={OrderDetailPage} />
+        <ProtectedRoute exact path="/order/:id/cancel" component={CancelOrderPage} />
+        <ProtectedRoute exact path="/profile/edit" component={EditProfilePage} />
+        <ProtectedRoute exact path="/profile/address-book" component={AddressBookPage} />
+        <ProtectedRoute exact path="/notifications" component={NotificationsPage} />
+        <ProtectedRoute exact path="/notifications/settings" component={NotificationSettings} />
+        <ProtectedRoute exact path="/privacy" component={PrivacySecurityPage} />
+        <ProtectedRoute exact path="/privacy/change-password" component={ChangePasswordPage} />
+        <ProtectedRoute exact path="/privacy/sessions" component={ActiveSessionsPage} />
+        <ProtectedRoute exact path="/profile/help-support" component={HelpSupportPage} />
+
         <Route path="/tabs"            component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
