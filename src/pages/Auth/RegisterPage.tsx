@@ -9,8 +9,16 @@ import {
   eyeOutline, eyeOffOutline, documentTextOutline,
 } from 'ionicons/icons';
 import { useApp } from '../../context/AppContext';
+import { authService } from '../../services/auth.service';
 import './Auth.css';
 import Logo from '../../assets/logo.png';
+
+/** Pulls a displayable message out of whatever shape the backend/axios error is. */
+function extractErrorMessage(err: any): string {
+  const backendMessage = err?.response?.data?.message;
+  const firstDetail = err?.response?.data?.details?.[0]?.message;
+  return firstDetail || backendMessage || 'Registration failed. Please try again.';
+}
 
 const RegisterPage: React.FC = () => {
   const history = useHistory();
@@ -43,12 +51,22 @@ const RegisterPage: React.FC = () => {
       return;
     }
     setLoading(true); setError('');
-    await new Promise(r => setTimeout(r, 1000));
-    dispatch({ type: 'SET_AUTH', payload: true });
-    dispatch({ type: 'SET_USER', payload: { id: '1', name: form.username, email: form.email, phone: '' } });
-    localStorage.setItem('medmeu_token', 'demo_token');
-    router.push('/tabs/home', 'root', 'replace');
-    setLoading(false);
+    console.log('hjdakjljflkjf:',)
+    try {
+      const { user } = await authService.register({
+        username: form.username,
+        email: form.email,
+        password: form.password,
+        license: form.license || undefined,
+      });
+      dispatch({ type: 'SET_AUTH', payload: true });
+      dispatch({ type: 'SET_USER', payload: user });
+      router.push('/tabs/home', 'root', 'replace');
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
