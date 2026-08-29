@@ -14,7 +14,10 @@ import {
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockCategories, mockProducts, mockBanners, mockTestimonials, mockTrustBadges, mockDeals } from '../../utils/mockData';
+import { mockBanners, mockTestimonials, mockTrustBadges } from '../../utils/mockData';
+import { productsService, UiProduct } from '../../services/products.service';
+import { categoriesService, UiCategory } from '../../services/categories.service';
+import { authService } from '../../services/auth.service';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -24,7 +27,18 @@ const HomePage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
+
+  // Real data — replaces mockCategories/mockProducts.
+  const [categories, setCategories] = useState<UiCategory[]>([]);
+  const [products, setProducts] = useState<UiProduct[]>([]);
+  const [deals, setDeals] = useState<UiProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  // Backend-search results shown while the search bar is open.
+  const [searchResults, setSearchResults] = useState<UiProduct[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const bannerScrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -36,11 +50,66 @@ const HomePage: React.FC = () => {
     }
   }, [searchOpen]);
 
-  /* Simulate initial data load — replace setTimeout with your real fetch */
+  /* ── Load real dashboard data: categories + home products + on-sale deals ── */
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1200);
-    return () => clearTimeout(t);
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cats, feat, sale] = await Promise.all([
+          categoriesService.list(),
+          productsService.getHomeProducts(8),
+          productsService.getOnSale(6),
+        ]);
+        if (cancelled) return;
+        setCategories(cats);
+        setProducts(feat);
+        setDeals(sale);
+        setLoadError(false);
+      } catch (err) {
+        console.error('Failed to load dashboard data', err);
+        if (!cancelled) setLoadError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
+  /**
+   * Revalidate the logged-in session against the backend rather than
+   * trusting the cached localStorage user indefinitely — if the token
+   * has expired/been revoked, api.ts's 401 interceptor already handles
+   * clearing it and redirecting to /login; this just makes sure the
+   * profile shown is current when the session IS still valid.
+   */
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+    authService.getMe()
+      .then(user => dispatch({ type: 'SET_USER', payload: user }))
+      .catch(() => { /* 401 case already handled globally by api.ts */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isAuthenticated]);
+
+  /* ── Debounced backend search while the search bar is open ── */
+  useEffect(() => {
+    if (!searchOpen || !search.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setSearchLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const results = await productsService.search(search, 20);
+        setSearchResults(results);
+      } catch (err) {
+        console.error('Search failed', err);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [search, searchOpen]);
 
   /* Auto-scroll banner every 4s, resets when activeBanner changes */
   useEffect(() => {
@@ -57,7 +126,7 @@ const HomePage: React.FC = () => {
     };
   }, [loading, activeBanner]);
 
-  const addToCart = (product: any) => {
+  const addToCart = (product: UiProduct) => {
     dispatch({
       type: 'ADD_TO_CART',
       payload: {
@@ -74,8 +143,22 @@ const HomePage: React.FC = () => {
   const toggleWishlist = (id: string) => dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
 
   const handleRefresh = async (e: any) => {
-    await new Promise(r => setTimeout(r, 1000));
-    e.detail.complete();
+    try {
+      const [cats, feat, sale] = await Promise.all([
+        categoriesService.list(),
+        productsService.getHomeProducts(8),
+        productsService.getOnSale(6),
+      ]);
+      setCategories(cats);
+      setProducts(feat);
+      setDeals(sale);
+      setLoadError(false);
+    } catch (err) {
+      console.error('Refresh failed', err);
+      setLoadError(true);
+    } finally {
+      e.detail.complete();
+    }
   };
 
   const closeSearch = () => {
@@ -94,10 +177,6 @@ const HomePage: React.FC = () => {
   const pauseAutoScroll = () => {
     if (autoScrollRef.current) clearInterval(autoScrollRef.current);
   };
-
-  const filteredProducts = mockProducts.filter(p =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <IonPage>
@@ -147,32 +226,41 @@ const HomePage: React.FC = () => {
         </IonRefresher>
 
         {searchOpen && search ? (
-          /* ── Search results view ── */
+          /* ── Search results view (real backend search, debounced) ── */
           <>
-            <p className="result-count">{filteredProducts.length} results for "{search}"</p>
-            {filteredProducts.length === 0 ? (
-              <div className="empty-state">
-                <span>🔍</span>
-                <p>No products found for "{search}"</p>
-              </div>
+            {searchLoading ? (
+              <ProductsSkeleton />
             ) : (
-              <div className="products-grid">
-                {filteredProducts.map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    inWishlist={state.wishlist.includes(product.id)}
-                    onCardClick={() => history.push(`/product/${product.id}`)}
-                    onWishlist={() => toggleWishlist(product.id)}
-                    onAddToCart={() => addToCart(product)}
-                  />
-                ))}
-              </div>
+              <>
+                <p className="result-count">{searchResults.length} results for "{search}"</p>
+                {searchResults.length === 0 ? (
+                  <div className="empty-state">
+                    <span>🔍</span>
+                    <p>No products found for "{search}"</p>
+                  </div>
+                ) : (
+                  <div className="products-grid">
+                    {searchResults.map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        inWishlist={state.wishlist.includes(product.id)}
+                        onCardClick={() => history.push(`/product/${product.id}`)}
+                        onWishlist={() => toggleWishlist(product.id)}
+                        onAddToCart={() => addToCart(product)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
           <>
-            {/* ── Offer Banner Carousel ── */}
+            {/* ── Offer Banner Carousel ──
+                Still mock: banners are marketing content (image + copy +
+                CTA), not catalog data — WooCommerce has nothing that maps
+                to this. Would need a simple CMS/custom endpoint later. */}
             {loading ? (
               <BannerSkeleton />
             ) : (
@@ -206,52 +294,71 @@ const HomePage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Categories ── */}
+            {/* ── Categories (real) ── */}
             <div className="section-header">
               <h2>Shop by Category</h2>
               <span onClick={() => history.push('/tabs/products')}>See All</span>
             </div>
-            <div className="category-grid">
-              {mockCategories.map(cat => (
-                <div
-                  key={cat.id}
-                  className="category-item"
-                  onClick={() => history.push(`/tabs/products?cat=${cat.id}`)}
-                >
-                  <div className="category-icon" style={{ background: `${cat.color}18` }}>
-                    <span>{cat.icon}</span>
+            {loadError && categories.length === 0 ? (
+              <p className="result-count">Couldn't load categories right now.</p>
+            ) : (
+              <div className="category-grid">
+                {categories.slice(0, 12).map(cat => (
+                  <div
+                    key={cat.id}
+                    className="category-item"
+                    onClick={() => history.push(`/tabs/products?cat=${cat.id}`)}
+                  >
+                    <div className="category-icon">
+                      {cat.image ? (
+                        <img src={cat.image} alt={cat.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                      ) : (
+                        <span>{cat.name.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <p className="category-name">{cat.name}</p>
+                    <span className="category-count">{cat.count} items</span>
                   </div>
-                  <p className="category-name">{cat.name}</p>
-                  <span className="category-count">{cat.count} items</span>
+                ))}
+              </div>
+            )}
+
+            {/* ── Offer Zone (real on-sale products) ──
+                Price, discount %, and title are real WooCommerce data.
+                Color/emoji/tag are decorative-only (no per-product data
+                backs them, so they just rotate through a fixed set) and
+                the countdown timer is omitted entirely rather than shown
+                with a fake end-time — see DealCard below. */}
+            {deals.length > 0 && (
+              <>
+                <div className="section-header">
+                  <h2>🔥 Offer Zone</h2>
+                  <span onClick={() => history.push('/tabs/products?on_sale=1')}>View All</span>
                 </div>
-              ))}
-            </div>
+                <div className="deals-scroll">
+                  {deals.map((product, i) => (
+                    <DealCard
+                      key={product.id}
+                      deal={mapProductToDeal(product, i)}
+                      onPress={() => history.push(`/product/${product.id}`)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
 
-            {/* ── Offer Zone ── */}
-            <div className="section-header">
-              <h2>🔥 Offer Zone</h2>
-              <span onClick={() => history.push('/tabs/products')}>View All</span>
-            </div>
-            <div className="deals-scroll">
-              {mockDeals.map(deal => (
-                <DealCard
-                  key={deal.id}
-                  deal={deal}
-                  onPress={() => history.push('/tabs/products')}
-                />
-              ))}
-            </div>
-
-            {/* ── Featured Products ── */}
+            {/* ── Featured Products (real) ── */}
             <div className="section-header">
               <h2>Featured Products</h2>
               <span onClick={() => history.push('/tabs/products')}>See All</span>
             </div>
             {loading ? (
               <ProductsSkeleton />
+            ) : loadError && products.length === 0 ? (
+              <p className="result-count">Couldn't load products right now. Pull to refresh.</p>
             ) : (
               <div className="products-grid">
-                {mockProducts.map(product => (
+                {products.map(product => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -264,7 +371,7 @@ const HomePage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Testimonials ── */}
+            {/* ── Testimonials — still mock, no backend source for these ── */}
             <div className="section-header">
               <h2>What Our Customers Say About Us</h2>
             </div>
@@ -274,7 +381,7 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
-            {/* ── Trust Badges ── */}
+            {/* ── Trust Badges — still mock, static marketing copy ── */}
             <div className="trust-strip">
               {mockTrustBadges.map((b, i) => (
                 <div key={i} className="trust-item">
@@ -347,7 +454,7 @@ const ProductsSkeleton: React.FC = () => (
 
 /* ── Reusable product card ── */
 const ProductCard: React.FC<{
-  product: any;
+  product: UiProduct;
   badge?: { label: string; type: 'new' | 'bestseller' };
   inWishlist: boolean;
   onCardClick: () => void;
@@ -427,13 +534,14 @@ const TestimonialCard: React.FC<{
   );
 };
 
-/* ── Countdown timer hook ── */
-const useCountdown = (initial: string) => {
-  const [time, setTime] = useState(initial);
+/* ── Countdown timer hook — returns null (no timer) when no end-time is given ── */
+const useCountdown = (initial?: string) => {
+  const [time, setTime] = useState<string | null>(initial ?? null);
   useEffect(() => {
+    if (!initial) return;
     const tick = setInterval(() => {
       setTime(prev => {
-        const [h, m, s] = prev.split(':').map(Number);
+        const [h, m, s] = (prev ?? initial).split(':').map(Number);
         let total = h * 3600 + m * 60 + s - 1;
         if (total <= 0) { clearInterval(tick); return '00:00:00'; }
         const hh = String(Math.floor(total / 3600)).padStart(2, '0');
@@ -443,9 +551,13 @@ const useCountdown = (initial: string) => {
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, []);
+  }, [initial]);
   return time;
 };
+
+/* Truncates a string to `max` chars, appending "..." only when it was actually cut */
+const truncate = (str: string, max: number) =>
+  str.length > max ? `${str.slice(0, max)}...` : str;
 
 /* Darkens a hex color by a given amount, used to build the deal-card gradient */
 const darkenColor = (hex: string, amount: number) => {
@@ -473,7 +585,7 @@ const DealCard: React.FC<{ deal: any; onPress: () => void }> = ({ deal, onPress 
             <span>OFF</span>
           </div>
         </div>
-        <p className="deal-title">{deal.title}</p>
+        <p className="deal-title">{truncate(deal.title, 40)}</p>
       </div>
 
       <div className="deal-ticket-divider">
@@ -483,14 +595,14 @@ const DealCard: React.FC<{ deal: any; onPress: () => void }> = ({ deal, onPress 
       </div>
 
       <div className="deal-card-body">
-        <p className="deal-desc">{deal.description}</p>
+        <p className="deal-desc">{truncate(deal.description, 100)}</p>
         <div className="deal-card-bottom">
           <div className="deal-price-row">
             <span className="deal-price">₹{deal.dealPrice}</span>
             <span className="deal-original">₹{deal.originalPrice}</span>
           </div>
           <div className="deal-timer">
-            <span className="timer-label">⏱ {time}</span>
+            {time && <span className="timer-label">⏱ {time}</span>}
           </div>
         </div>
         <button className="deal-btn" style={{ background: deal.color }}>
@@ -500,5 +612,31 @@ const DealCard: React.FC<{ deal: any; onPress: () => void }> = ({ deal, onPress 
     </div>
   );
 };
+
+/**
+ * Adapts a real UiProduct into the shape <DealCard> expects.
+ * REAL: title, discount, dealPrice, originalPrice, description.
+ * DECORATIVE ONLY (no product data backs these — just cycled for visual
+ * variety, not meant to imply per-product meaning): color, emoji, tag.
+ * endsIn is intentionally omitted — there's no real deal-expiry data in
+ * WooCommerce, so DealCard shows no countdown at all rather than a fake one.
+ */
+const DEAL_COLORS = ['#2171a8', '#f4621d', '#2E7D32', '#C62828', '#7B1FA2', '#00838F'];
+const DEAL_EMOJIS = ['💊', '🩺', '🧴', '💉', '🧪', '🩹'];
+
+function mapProductToDeal(product: UiProduct, index: number) {
+  return {
+    id: product.id,
+    title: product.name,
+    description: product.shortDescription || 'Limited-time price on this item.',
+    discount: product.discount,
+    dealPrice: product.price,
+    originalPrice: product.originalPrice,
+    tag: 'On Sale',
+    color: DEAL_COLORS[index % DEAL_COLORS.length],
+    emoji: DEAL_EMOJIS[index % DEAL_EMOJIS.length],
+    endsIn: undefined as string | undefined,
+  };
+}
 
 export default HomePage;

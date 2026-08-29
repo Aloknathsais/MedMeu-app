@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import {
-  IonPage, IonContent, IonButton, IonInput, IonItem,
-  IonText, IonSpinner, IonIcon,
+  IonPage, IonContent, IonSpinner, IonIcon, IonText,
 } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { useIonRouter } from '@ionic/react';
 import { eyeOutline, eyeOffOutline, lockClosedOutline, personOutline } from 'ionicons/icons';
 import { useApp } from '../../context/AppContext';
+import { authService } from '../../services/auth.service';
 import './Auth.css';
 import Logo from '../../assets/logo.png';
+
+/** Pulls a displayable message out of whatever shape the backend/axios error is. */
+function extractErrorMessage(err: any): string {
+  const backendMessage = err?.response?.data?.message;
+  const firstDetail = err?.response?.data?.details?.[0]?.message;
+  return firstDetail || backendMessage || 'Invalid credentials. Please try again.';
+}
 
 const LoginPage: React.FC = () => {
   const history = useHistory();
@@ -25,13 +32,15 @@ const LoginPage: React.FC = () => {
     if (!username || !password) { setError('Please fill all fields'); return; }
     setLoading(true); setError('');
     try {
-      await new Promise(r => setTimeout(r, 1000));
+      // Backend login only supports email lookups today — if this field
+      // isn't a real email address the backend will reject it. See the
+      // note in authService.login for the "username or email" caveat.
+      const { user } = await authService.login({ usernameOrEmail: username, password });
       dispatch({ type: 'SET_AUTH', payload: true });
-      dispatch({ type: 'SET_USER', payload: { id: '1', name: username, email: username, phone: '' } });
-      localStorage.setItem('medmeu_token', 'demo_token');
+      dispatch({ type: 'SET_USER', payload: user });
       router.push('/tabs/home', 'root', 'replace');
-    } catch {
-      setError('Invalid credentials. Please try again.');
+    } catch (err) {
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }

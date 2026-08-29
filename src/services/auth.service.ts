@@ -77,6 +77,14 @@ export const authService = {
     return { token, user };
   },
 
+  async getMe(): Promise<MappedUser> {
+    const { data: envelope } = await api.get('/customers/me');
+    const user = mapCustomerToUser(envelope.data);
+    // Keep the cache fresh so a later page refresh shows the latest data too.
+    localStorage.setItem('medmeu_user', JSON.stringify(user));
+    return user;
+  },
+
   logout() {
     localStorage.removeItem('medmeu_token');
     localStorage.removeItem('medmeu_user');
