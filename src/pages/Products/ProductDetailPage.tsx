@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonBackButton, IonButtons,
-  IonButton, IonIcon, IonBadge, IonToast,
+  IonButton, IonIcon, IonBadge, IonToast, IonSpinner,
 } from '@ionic/react';
 import {
   heartOutline, heart, cartOutline, starSharp, shareSocialOutline,
@@ -9,7 +9,7 @@ import {
 } from 'ionicons/icons';
 import { useParams, useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockProducts } from '../../utils/mockData';
+import { productsService, UiProduct } from '../../services/products.service';
 import './Products.css';
 
 const ProductDetailPage: React.FC = () => {
@@ -22,13 +22,50 @@ const ProductDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'desc' | 'spec' | 'reviews'>('desc');
   const [activeImg, setActiveImg] = useState(0);
 
+  const [product, setProduct] = useState<UiProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
   // Swipe tracking
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  const product = mockProducts.find(p => p.id === id);
-  if (!product) {
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
+    setActiveImg(0);
+    setQty(1);
+    productsService.getById(id)
+      .then(p => { if (!cancelled) setProduct(p); })
+      .catch(err => {
+        console.error('Failed to load product', err);
+        if (!cancelled) setNotFound(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start"><IonBackButton /></IonButtons>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ textAlign: 'center', padding: '80px 20px', color: '#888' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading product...</p>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  if (notFound || !product) {
     return (
       <IonPage>
         <IonHeader>
@@ -44,10 +81,8 @@ const ProductDetailPage: React.FC = () => {
   }
 
   const inWishlist = state.wishlist.includes(product.id);
-
-  // Use 3 copies of the same image as placeholder gallery
-  // Replace with product.images array when your API provides multiple images
-  const images = [product.image, product.image, product.image];
+  const images = product.images; // real gallery from WooCommerce — no more 3x duplicate placeholder
+  const maxQty = product.stockQuantity ?? 99;
 
   const goToSlide = (index: number) => {
     setActiveImg(index);
@@ -83,19 +118,17 @@ const ProductDetailPage: React.FC = () => {
   };
 
   const addToCart = () => {
-    for (let i = 0; i < qty; i++) {
-      dispatch({
-        type: 'ADD_TO_CART',
-        payload: {
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          image: product.image,
-          quantity: 1,
-          unit: product.unit,
-        },
-      });
-    }
+    dispatch({
+      type: 'ADD_TO_CART',
+      payload: {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: qty,
+        unit: product.unit,
+      },
+    });
     setToastMsg('Added to cart!');
     setShowToast(true);
   };
@@ -124,17 +157,16 @@ const ProductDetailPage: React.FC = () => {
 
       <IonContent fullscreen>
 
-        {/* ── Image Slider ── */}
+        {/* ── Image Slider (real gallery — however many images WooCommerce actually has) ── */}
         <div className="img-slider-wrap">
-          {/* Discount badge */}
           {product.discount > 0 && (
             <span className="detail-discount">{product.discount}% OFF</span>
           )}
 
-          {/* Image count indicator */}
-          <span className="img-count-badge">{activeImg + 1} / {images.length}</span>
+          {images.length > 1 && (
+            <span className="img-count-badge">{activeImg + 1} / {images.length}</span>
+          )}
 
-          {/* Slider track */}
           <div
             className="img-slider-track"
             ref={sliderRef}
@@ -149,18 +181,18 @@ const ProductDetailPage: React.FC = () => {
             ))}
           </div>
 
-          {/* Dot indicators */}
-          <div className="img-slider-dots">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                className={`img-slider-dot ${i === activeImg ? 'active' : ''}`}
-                onClick={() => goToSlide(i)}
-              />
-            ))}
-          </div>
+          {images.length > 1 && (
+            <div className="img-slider-dots">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  className={`img-slider-dot ${i === activeImg ? 'active' : ''}`}
+                  onClick={() => goToSlide(i)}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Left / Right arrows */}
           {activeImg > 0 && (
             <button className="slider-arrow left" onClick={() => goToSlide(activeImg - 1)}>‹</button>
           )}
@@ -169,23 +201,24 @@ const ProductDetailPage: React.FC = () => {
           )}
         </div>
 
-        {/* ── Thumbnail strip ── */}
-        <div className="detail-thumbs">
-          {images.map((img, i) => (
-            <button
-              key={i}
-              className={`thumb-btn ${activeImg === i ? 'active' : ''}`}
-              onClick={() => goToSlide(i)}
-            >
-              <img src={img} alt="" />
-            </button>
-          ))}
-        </div>
+        {/* ── Thumbnail strip (only when there's more than one real image) ── */}
+        {images.length > 1 && (
+          <div className="detail-thumbs">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                className={`thumb-btn ${activeImg === i ? 'active' : ''}`}
+                onClick={() => goToSlide(i)}
+              >
+                <img src={img} alt="" />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* ── Product Info ── */}
         <div className="detail-body">
           <div className="detail-top-row">
-            <p className="detail-brand">{product.brand}</p>
             <span className={`stock-pill ${product.inStock ? 'in' : 'out'}`}>
               {product.inStock ? '✓ In Stock' : 'Out of Stock'}
             </span>
@@ -211,18 +244,23 @@ const ProductDetailPage: React.FC = () => {
                 </>
               )}
             </div>
-            <p className="detail-unit">Price for {product.unit} · Inclusive of all taxes</p>
+            <p className="detail-unit">Inclusive of all taxes</p>
           </div>
 
-          {/* Qty selector */}
+          {/* Qty selector — capped at real stock quantity when WooCommerce is tracking it */}
           <div className="qty-row">
             <span className="qty-label">Quantity</span>
             <div className="qty-controls">
               <button className="qty-btn" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
               <span className="qty-val">{qty}</span>
-              <button className="qty-btn" onClick={() => setQty(qty + 1)}>+</button>
+              <button className="qty-btn" onClick={() => setQty(Math.min(maxQty, qty + 1))}>+</button>
             </div>
           </div>
+          {product.stockQuantity != null && product.stockQuantity <= 10 && (
+            <p style={{ fontSize: 12, color: '#C62828', margin: '-8px 0 12px' }}>
+              Only {product.stockQuantity} left in stock
+            </p>
+          )}
 
           {/* Trust badges */}
           <div className="detail-trust-row">
@@ -239,15 +277,25 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           {activeTab === 'desc' && (
-            <p className="detail-desc">{product.description}</p>
+            product.descriptionHtml ? (
+              // Content comes from your own WooCommerce product editor (trusted
+              // first-party source), not user input — safe to render as HTML.
+              <div className="detail-desc" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} />
+            ) : (
+              <p className="detail-desc">{product.shortDescription || 'No description available.'}</p>
+            )
           )}
 
           {activeTab === 'spec' && (
-            <ul className="detail-specs">
-              {product.specs.map((s, i) => (
-                <li key={i}><span>✓</span>{s}</li>
-              ))}
-            </ul>
+            product.specs.length > 0 ? (
+              <ul className="detail-specs">
+                {product.specs.map((s, i) => (
+                  <li key={i}><span>✓</span>{s.name}: {s.value}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="detail-desc">No specifications available for this product.</p>
+            )
           )}
 
           {activeTab === 'reviews' && (

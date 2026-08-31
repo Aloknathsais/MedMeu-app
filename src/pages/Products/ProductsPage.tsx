@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonBackButton,
-  IonButtons, IonIcon, IonButton,
+  IonButtons, IonIcon, IonButton, IonSpinner,
 } from '@ionic/react';
 import {
   starSharp, heartOutline, heart, optionsOutline, closeOutline,
   searchOutline, chevronDownOutline, gridOutline, listOutline,
   chevronForwardOutline, chevronDownOutline as chevronDown,
 } from 'ionicons/icons';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockProducts, mockCategories, mockSubCategories } from '../../utils/mockData';
+import { productsService, UiProduct } from '../../services/products.service';
+import { categoriesService, CategoryTree } from '../../services/categories.service';
 import './Products.css';
 
 const sortOptions = [
@@ -28,12 +29,13 @@ const discountOptions = [
   { label: '30% & above', value: 30 },
 ];
 
-const sizeOptions = ['S', 'M', 'L', 'XL', 'XXL'];
-const weightOptions = ['100ml', '200ml', '400ml', '500g', '1kg', '1 Unit', '1 Kit', '1 Piece'];
+const PER_PAGE = 20;
 
 const ProductsPage: React.FC = () => {
   const history = useHistory();
+  const location = useLocation();
   const { state, dispatch } = useApp();
+
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('popular');
   const [selectedCat, setSelectedCat] = useState('all');
@@ -45,10 +47,36 @@ const ProductsPage: React.FC = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [minDiscount, setMinDiscount] = useState(0);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-  const [selectedWeights, setSelectedWeights] = useState<string[]>([]);
 
-  const addToCart = (product: any, e: any) => {
+  // Real categories (with real WooCommerce parent/child hierarchy).
+  const [categoryTree, setCategoryTree] = useState<CategoryTree>({ topLevel: [], childrenByParent: {} });
+
+  // Real products + pagination.
+  const [products, setProducts] = useState<UiProduct[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  const requestIdRef = useRef(0);
+
+  /* Pick up ?cat=<id> or ?on_sale=1 if arriving from Home's "See All" / "View All" links. */
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const cat = params.get('cat');
+    if (cat) setSelectedCat(cat);
+  }, [location.search]);
+
+  /* ── Load category tree once ── */
+  useEffect(() => {
+    categoriesService.getTree()
+      .then(setCategoryTree)
+      .catch(err => console.error('Failed to load categories', err));
+  }, []);
+
+  const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
     dispatch({ type: 'ADD_TO_CART', payload: { id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit } });
   };
@@ -58,28 +86,82 @@ const ProductsPage: React.FC = () => {
     dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
   };
 
-  const toggleSize = (s: string) => setSelectedSizes(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
-  const toggleWeight = (w: string) => setSelectedWeights(p => p.includes(w) ? p.filter(x => x !== w) : [...p, w]);
-
   const resetFilters = () => {
     setPriceRange([0, 5000]);
     setInStockOnly(false);
     setMinDiscount(0);
-    setSelectedSizes([]);
-    setSelectedWeights([]);
   };
+
+  /* ── Fetch products from the real backend ── */
+  const fetchProducts = useCallback(async (pageToFetch: number, append: boolean) => {
+    const thisRequestId = ++requestIdRef.current;
+    if (append) setLoadingMore(true); else setLoading(true);
+
+    const orderby =
+      sort === 'price_asc' || sort === 'price_desc' ? 'price'
+      : sort === 'rating' ? 'rating'
+      : sort === 'newest' ? 'date'
+      : 'popularity';
+    const order =
+      sort === 'price_asc' ? 'asc'
+      : sort === 'price_desc' || sort === 'newest' ? 'desc'
+      : undefined;
+
+    try {
+      const result = await productsService.list({
+        page: pageToFetch,
+        per_page: PER_PAGE,
+        search: search.trim() || undefined,
+        category: selectedSubCat || (selectedCat !== 'all' ? selectedCat : undefined),
+        min_price: priceRange[0] || undefined,
+        max_price: priceRange[1] < 5000 ? priceRange[1] : undefined,
+        stock_status: inStockOnly ? 'instock' : undefined,
+        orderby,
+        order,
+      });
+      // Ignore results from a stale, superseded request (e.g. user changed filters again mid-flight).
+      if (thisRequestId !== requestIdRef.current) return;
+
+      setProducts(prev => (append ? [...prev, ...result.products] : result.products));
+      setPage(result.page);
+      setTotalPages(result.totalPages);
+      setTotal(result.total);
+      setLoadError(false);
+    } catch (err) {
+      console.error('Failed to load products', err);
+      if (thisRequestId === requestIdRef.current) setLoadError(true);
+    } finally {
+      if (thisRequestId === requestIdRef.current) { setLoading(false); setLoadingMore(false); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, sort, selectedCat, selectedSubCat, priceRange, inStockOnly]);
+
+  /* Re-fetch (from page 1) whenever a filter/sort/search/category changes — debounced. */
+  useEffect(() => {
+    const t = setTimeout(() => fetchProducts(1, false), 350);
+    return () => clearTimeout(t);
+  }, [fetchProducts]);
+
+  const loadMore = () => {
+    if (page < totalPages && !loadingMore) fetchProducts(page + 1, true);
+  };
+
+  // Discount has no WooCommerce list-filter equivalent — applied client-side
+  // on top of whatever page(s) are currently loaded, not the whole catalog.
+  const displayedProducts = minDiscount === 0
+    ? products
+    : products.filter(p => p.discount >= minDiscount);
 
   // Handle category chip tap
   const handleCatTap = (catId: string) => {
-    const cat = mockCategories.find(c => c.id === catId);
     if (catId === 'all') {
       setSelectedCat('all');
       setExpandedCat(null);
       setSelectedSubCat(null);
       return;
     }
-    if (cat?.hasSubCategories && mockSubCategories[catId]) {
-      // Toggle expand; if already expanded, collapse
+    const hasSubCategories = (categoryTree.childrenByParent[catId]?.length || 0) > 0;
+    if (hasSubCategories) {
       if (expandedCat === catId) {
         setExpandedCat(null);
         setSelectedSubCat(null);
@@ -89,41 +171,25 @@ const ProductsPage: React.FC = () => {
         setSelectedSubCat(null);
       }
     } else {
-      // No subcategories — select directly
       setSelectedCat(catId);
       setExpandedCat(null);
       setSelectedSubCat(null);
     }
   };
 
-  // Handle subcategory tap
   const handleSubCatTap = (subId: string) => {
     setSelectedSubCat(prev => prev === subId ? null : subId);
   };
 
-  // Filter products
-  let filtered = mockProducts
-    .filter(p => {
-      if (selectedCat === 'all') return true;
-      if (p.category !== selectedCat) return false;
-      return true;
-    })
-    .filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()))
-    .filter(p => p.price >= priceRange[0] && p.price <= priceRange[1])
-    .filter(p => !inStockOnly || p.inStock)
-    .filter(p => minDiscount === 0 || p.discount >= minDiscount)
-    .filter(p => selectedWeights.length === 0 || selectedWeights.includes(p.unit));
-
-  if (sort === 'price_asc') filtered = [...filtered].sort((a, b) => a.price - b.price);
-  else if (sort === 'price_desc') filtered = [...filtered].sort((a, b) => b.price - a.price);
-  else if (sort === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
-
   const activeFilterCount =
     (inStockOnly ? 1 : 0) +
     (priceRange[1] < 5000 ? 1 : 0) +
-    (minDiscount > 0 ? 1 : 0) +
-    (selectedSizes.length > 0 ? 1 : 0) +
-    (selectedWeights.length > 0 ? 1 : 0);
+    (minDiscount > 0 ? 1 : 0);
+
+  const expandedCatName = categoryTree.topLevel.find(c => c.id === expandedCat)?.name;
+  const selectedSubCatName = expandedCat
+    ? categoryTree.childrenByParent[expandedCat]?.find(s => s.id === selectedSubCat)?.name
+    : undefined;
 
   return (
     <IonPage>
@@ -148,10 +214,9 @@ const ProductsPage: React.FC = () => {
 
       <IonContent fullscreen>
 
-        {/* ── Category chips with inline subcategory tree ── */}
+        {/* ── Category chips with inline subcategory tree (real WooCommerce hierarchy) ── */}
         <div className="cat-chips-section">
           <div className="cat-chips">
-            {/* All chip */}
             <button
               className={`cat-chip ${selectedCat === 'all' ? 'active' : ''}`}
               onClick={() => handleCatTap('all')}
@@ -159,18 +224,19 @@ const ProductsPage: React.FC = () => {
               All
             </button>
 
-            {mockCategories.map(cat => {
+            {categoryTree.topLevel.map(cat => {
               const isSelected = selectedCat === cat.id;
               const isExpanded = expandedCat === cat.id;
+              const hasSubCategories = (categoryTree.childrenByParent[cat.id]?.length || 0) > 0;
               return (
                 <button
                   key={cat.id}
                   className={`cat-chip ${isSelected ? 'active' : ''} ${isExpanded ? 'expanded' : ''}`}
                   onClick={() => handleCatTap(cat.id)}
                 >
-                  <span className="cat-chip-emoji">{cat.icon}</span>
+                  <span className="cat-chip-emoji">{cat.name.charAt(0).toUpperCase()}</span>
                   {cat.name}
-                  {cat.hasSubCategories && (
+                  {hasSubCategories && (
                     <IonIcon
                       icon={isExpanded ? chevronDown : chevronForwardOutline}
                       className="cat-chip-arrow"
@@ -182,20 +248,17 @@ const ProductsPage: React.FC = () => {
           </div>
 
           {/* ── Inline subcategory tree panel ── */}
-          {expandedCat && mockSubCategories[expandedCat] && (
+          {expandedCat && categoryTree.childrenByParent[expandedCat] && (
             <div className="subcat-tree-panel">
               <div className="subcat-tree-header">
-                <span className="subcat-tree-label">
-                  {mockCategories.find(c => c.id === expandedCat)?.icon}{' '}
-                  {mockCategories.find(c => c.id === expandedCat)?.name}
-                </span>
+                <span className="subcat-tree-label">{expandedCatName}</span>
                 <span className="subcat-tree-all"
                   onClick={() => { setSelectedSubCat(null); setSelectedCat(expandedCat); }}>
                   View All
                 </span>
               </div>
               <div className="subcat-tree-items">
-                {mockSubCategories[expandedCat].map(sub => {
+                {categoryTree.childrenByParent[expandedCat].map(sub => {
                   const isSubSelected = selectedSubCat === sub.id;
                   return (
                     <button
@@ -203,7 +266,7 @@ const ProductsPage: React.FC = () => {
                       className={`subcat-tree-item ${isSubSelected ? 'active' : ''}`}
                       onClick={() => handleSubCatTap(sub.id)}
                     >
-                      <span className="subcat-tree-icon">{sub.icon}</span>
+                      <span className="subcat-tree-icon">{sub.name.charAt(0).toUpperCase()}</span>
                       <span className="subcat-tree-name">{sub.name}</span>
                       <span className="subcat-tree-count">{sub.count}</span>
                       {isSubSelected && <span className="subcat-check">✓</span>}
@@ -234,10 +297,7 @@ const ProductsPage: React.FC = () => {
         {/* ── Active subcategory indicator ── */}
         {selectedSubCat && (
           <div className="active-subcat-bar">
-            <span>
-              {mockSubCategories[expandedCat!]?.find(s => s.id === selectedSubCat)?.icon}{' '}
-              {mockSubCategories[expandedCat!]?.find(s => s.id === selectedSubCat)?.name}
-            </span>
+            <span>{selectedSubCatName}</span>
             <button onClick={() => setSelectedSubCat(null)}>✕ Clear</button>
           </div>
         )}
@@ -248,16 +308,28 @@ const ProductsPage: React.FC = () => {
             {priceRange[1] < 5000 && <span className="active-filter-pill">Under ₹{priceRange[1]} <button onClick={() => setPriceRange([0, 5000])}>×</button></span>}
             {minDiscount > 0 && <span className="active-filter-pill">{minDiscount}%+ Off <button onClick={() => setMinDiscount(0)}>×</button></span>}
             {inStockOnly && <span className="active-filter-pill">In Stock <button onClick={() => setInStockOnly(false)}>×</button></span>}
-            {selectedSizes.map(s => <span key={s} className="active-filter-pill">Size: {s} <button onClick={() => toggleSize(s)}>×</button></span>)}
-            {selectedWeights.map(w => <span key={w} className="active-filter-pill">{w} <button onClick={() => toggleWeight(w)}>×</button></span>)}
             <button className="clear-all-btn" onClick={resetFilters}>Clear All</button>
           </div>
         )}
 
-        <p className="result-count">{filtered.length} {filtered.length === 1 ? 'product' : 'products'} found</p>
+        {!loading && (
+          <p className="result-count">{total} {total === 1 ? 'product' : 'products'} found</p>
+        )}
 
         {/* ── Products ── */}
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#888' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading products...</p>
+          </div>
+        ) : loadError && products.length === 0 ? (
+          <div className="empty-state">
+            <span>⚠️</span>
+            <h3>Couldn't load products</h3>
+            <p>Check your connection and try again.</p>
+            <IonButton size="small" fill="outline" onClick={() => fetchProducts(1, false)}>Retry</IonButton>
+          </div>
+        ) : displayedProducts.length === 0 ? (
           <div className="empty-state">
             <span>🔍</span>
             <h3>No products found</h3>
@@ -266,7 +338,7 @@ const ProductsPage: React.FC = () => {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="products-grid-view">
-            {filtered.map(product => (
+            {displayedProducts.map(product => (
               <div key={product.id} className="grid-card" onClick={() => history.push(`/product/${product.id}`)}>
                 <div className="grid-img-wrap">
                   <img src={product.image} alt={product.name} loading="lazy" />
@@ -277,7 +349,6 @@ const ProductsPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="grid-info">
-                  <p className="grid-brand">{product.brand}</p>
                   <p className="grid-name">{product.name}</p>
                   <div className="grid-rating">
                     <IonIcon icon={starSharp} color="warning" />
@@ -288,7 +359,6 @@ const ProductsPage: React.FC = () => {
                     <span className="grid-price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="grid-original">₹{product.originalPrice}</span>}
                   </div>
-                  <p className="grid-unit">{product.unit}</p>
                   {product.inStock ? (
                     <button className="grid-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
                   ) : (
@@ -300,17 +370,15 @@ const ProductsPage: React.FC = () => {
           </div>
         ) : (
           <div className="products-list">
-            {filtered.map(product => (
+            {displayedProducts.map(product => (
               <div key={product.id} className="product-list-card" onClick={() => history.push(`/product/${product.id}`)}>
                 <img src={product.image} alt={product.name} className="list-img" loading="lazy" />
                 <div className="list-info">
-                  <p className="list-brand">{product.brand}</p>
                   <p className="list-name">{product.name}</p>
                   <div className="list-rating">
                     <IonIcon icon={starSharp} color="warning" style={{ fontSize: 13 }} />
                     <span>{product.rating} ({product.reviews})</span>
                   </div>
-                  <p className="list-unit-tag">{product.unit}</p>
                   <div className="list-price">
                     <span className="price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="original-price">₹{product.originalPrice}</span>}
@@ -328,6 +396,15 @@ const ProductsPage: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Load more (real pagination) ── */}
+        {!loading && !loadError && page < totalPages && minDiscount === 0 && (
+          <div style={{ textAlign: 'center', padding: '16px' }}>
+            <IonButton fill="outline" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? <IonSpinner name="crescent" /> : `Load More (${total - products.length} remaining)`}
+            </IonButton>
           </div>
         )}
 
@@ -354,7 +431,12 @@ const ProductsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Sheet */}
+      {/* Filter Sheet
+          Note: Size and Weight/Unit filters were removed — WooCommerce
+          products (via the backend adapter) don't carry a "size" or
+          "unit" field, so those filters would always match nothing
+          against real data. Re-add them once that's backed by real
+          WooCommerce product attributes. */}
       {showFilterSheet && (
         <div className="sheet-overlay" onClick={() => setShowFilterSheet(false)}>
           <div className="sheet-panel" onClick={e => e.stopPropagation()}>
@@ -384,22 +466,6 @@ const ProductsPage: React.FC = () => {
               </div>
             </div>
             <div className="filter-group">
-              <p className="filter-label">Size</p>
-              <div className="size-chips">
-                {sizeOptions.map(size => (
-                  <button key={size} className={`size-chip ${selectedSizes.includes(size) ? 'active' : ''}`} onClick={() => toggleSize(size)}>{size}</button>
-                ))}
-              </div>
-            </div>
-            <div className="filter-group">
-              <p className="filter-label">Weight / Unit</p>
-              <div className="filter-option-grid">
-                {weightOptions.map(w => (
-                  <button key={w} className={`filter-option-chip ${selectedWeights.includes(w) ? 'active' : ''}`} onClick={() => toggleWeight(w)}>{w}</button>
-                ))}
-              </div>
-            </div>
-            <div className="filter-group">
               <label className="checkbox-row">
                 <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
                 <span>In Stock Only</span>
@@ -407,7 +473,7 @@ const ProductsPage: React.FC = () => {
             </div>
             <div className="sheet-actions">
               <button className="sheet-btn-outline" onClick={resetFilters}>Reset All</button>
-              <button className="sheet-btn-solid" onClick={() => setShowFilterSheet(false)}>Show {filtered.length} Results</button>
+              <button className="sheet-btn-solid" onClick={() => setShowFilterSheet(false)}>Show {displayedProducts.length} Results</button>
             </div>
           </div>
         </div>
