@@ -5,6 +5,15 @@ export interface CartItem {
 }
 export interface User {
   id: string; name: string; email: string; phone: string; avatar?: string;
+  /** No native WooCommerce field — stored as customer meta_data on the backend. */
+  dob?: string;
+  gender?: string;
+  /** All three come from WooCommerce's billing address sub-object. */
+  city?: string;
+  state?: string;
+  pincode?: string;
+  /** Real WooCommerce customer creation date — used for a real "Member Since" display. */
+  memberSince?: string;
 }
 
 interface AppState {
