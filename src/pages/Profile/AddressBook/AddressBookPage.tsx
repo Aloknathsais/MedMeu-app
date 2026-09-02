@@ -1,22 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonBackButton, IonButtons, IonIcon, IonToast,
+  IonBackButton, IonButtons, IonIcon, IonToast, IonSpinner,
 } from '@ionic/react';
 import {
   addOutline, homeOutline, businessOutline, locationSharp,
   pencilOutline, trashBinOutline, checkmarkCircle,
-  locationOutline, closeOutline, warningOutline,
+  locationOutline, warningOutline,
 } from 'ionicons/icons';
+import { addressesService, Address as ApiAddress } from '../../../services/addresses.service';
 import './AddressBook.css';
 
 /* ── Types ── */
-export interface Address {
+type Tag = 'Home' | 'Office' | 'Other';
+
+/** Local display type — same shape the UI already used, `tag` maps to the backend's `label` field. */
+interface Address {
   id: string;
   name: string;
-  tag: 'Home' | 'Office' | 'Other';
+  tag: Tag;
   line1: string;
   line2: string;
+  city: string;
+  state: string;
   pincode: string;
   phone: string;
   isDefault: boolean;
@@ -28,51 +34,80 @@ const tagIcon: Record<string, any> = {
   Other:  locationSharp,
 };
 
-const INITIAL_ADDRESSES: Address[] = [
-  {
-    id: 'addr1', name: 'John Doe', tag: 'Home',
-    line1: '123, MG Road', line2: 'Bhubaneswar, Odisha',
-    pincode: '751001', phone: '+91 98765 43210', isDefault: true,
-  },
-  {
-    id: 'addr2', name: 'John Doe', tag: 'Office',
-    line1: '45, Janpath Tower, 3rd Floor', line2: 'Saheed Nagar, Bhubaneswar, Odisha',
-    pincode: '751007', phone: '+91 98765 43210', isDefault: false,
-  },
-  {
-    id: 'addr3', name: 'John Doe', tag: 'Other',
-    line1: '8, New Colony, Near AIIMS', line2: 'Patrapada, Bhubaneswar, Odisha',
-    pincode: '751019', phone: '+91 98765 43210', isDefault: false,
-  },
-];
+function fromApi(a: ApiAddress): Address {
+  const tag: Tag = a.label === 'Home' || a.label === 'Office' ? a.label : 'Other';
+  return {
+    id: a.id,
+    name: a.name,
+    tag,
+    line1: a.line1,
+    line2: a.line2 || '',
+    city: a.city,
+    state: a.state,
+    pincode: a.pincode,
+    phone: a.phone,
+    isDefault: !!a.isDefault,
+  };
+}
+
+function extractErrorMessage(err: any, fallback: string): string {
+  const backendMessage = err?.response?.data?.message;
+  const firstDetail = err?.response?.data?.details?.[0]?.message;
+  return firstDetail || backendMessage || fallback;
+}
 
 type ViewMode = 'list' | 'add' | 'edit';
 
-const emptyForm = (): Omit<Address, 'id' | 'isDefault'> => ({
-  name: '', tag: 'Home', line1: '', line2: '', pincode: '', phone: '',
+type FormShape = Omit<Address, 'id' | 'isDefault'>;
+
+const emptyForm = (): FormShape => ({
+  name: '', tag: 'Home', line1: '', line2: '', city: '', state: '', pincode: '', phone: '',
 });
 
 const AddressBookPage: React.FC = () => {
-  const [addresses, setAddresses] = useState<Address[]>(INITIAL_ADDRESSES);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState(emptyForm());
-  const [errors, setErrors] = useState<Partial<typeof form>>({});
+  const [form, setForm] = useState<FormShape>(emptyForm());
+  const [errors, setErrors] = useState<Partial<Record<keyof FormShape, string>>>({});
+  const [saving, setSaving] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
 
-  const update = (field: keyof typeof form) =>
+  const fetchAddresses = useCallback(async () => {
+    try {
+      const list = await addressesService.list();
+      setAddresses(list.map(fromApi));
+      setLoadError(false);
+    } catch (err) {
+      console.error('Failed to load addresses', err);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchAddresses(); }, [fetchAddresses]);
+
+  const update = (field: keyof FormShape) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setForm(p => ({ ...p, [field]: e.target.value }));
       setErrors(p => ({ ...p, [field]: '' }));
     };
 
   const validate = (): boolean => {
-    const e: Partial<typeof form> = {};
+    const e: Partial<Record<keyof FormShape, string>> = {};
     if (!form.name.trim())    e.name    = 'Full name is required';
     if (!form.line1.trim())   e.line1   = 'Address line 1 is required';
+    if (!form.city.trim())    e.city    = 'City is required';
+    if (!form.state.trim())   e.state   = 'State is required';
     if (!form.phone.trim())   e.phone   = 'Phone number is required';
     else if (form.phone.replace(/\D/g, '').length < 10) e.phone = 'Enter a valid 10-digit number';
     if (!form.pincode.trim()) e.pincode = 'Pincode is required';
@@ -90,57 +125,87 @@ const AddressBookPage: React.FC = () => {
 
   const openEdit = (addr: Address) => {
     setForm({
-      name: addr.name, tag: addr.tag, line1: addr.line1,
-      line2: addr.line2, pincode: addr.pincode, phone: addr.phone,
+      name: addr.name, tag: addr.tag, line1: addr.line1, line2: addr.line2,
+      city: addr.city, state: addr.state, pincode: addr.pincode, phone: addr.phone,
     });
     setErrors({});
     setEditingId(addr.id);
     setViewMode('edit');
   };
 
-  const handleSave = () => {
-    if (!validate()) return;
-    if (viewMode === 'add') {
-      const newAddr: Address = {
-        id: `addr${Date.now()}`,
-        ...form,
-        tag: form.tag as Address['tag'],
-        isDefault: addresses.length === 0,
-      };
-      setAddresses(p => [...p, newAddr]);
-      setToastMsg('Address added successfully!');
-    } else {
-      setAddresses(p =>
-        p.map(a => a.id === editingId
-          ? { ...a, ...form, tag: form.tag as Address['tag'] }
-          : a
-        )
-      );
-      setToastMsg('Address updated successfully!');
+  const handleSave = async () => {
+    if (!validate() || saving) return;
+    setSaving(true);
+    try {
+      if (viewMode === 'add') {
+        await addressesService.create({
+          label: form.tag,
+          name: form.name,
+          phone: form.phone,
+          line1: form.line1,
+          line2: form.line2 || undefined,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+        });
+        setToastMsg('Address added successfully!');
+      } else if (editingId) {
+        await addressesService.update(editingId, {
+          label: form.tag,
+          name: form.name,
+          phone: form.phone,
+          line1: form.line1,
+          line2: form.line2 || undefined,
+          city: form.city,
+          state: form.state,
+          pincode: form.pincode,
+        });
+        setToastMsg('Address updated successfully!');
+      }
+      await fetchAddresses();
+      setToastColor('success');
+      setShowToast(true);
+      setViewMode('list');
+    } catch (err) {
+      setToastMsg(extractErrorMessage(err, 'Failed to save address. Please try again.'));
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setSaving(false);
     }
-    setToastColor('success');
-    setShowToast(true);
-    setViewMode('list');
   };
 
-  const handleDelete = (id: string) => {
-    const wasDefault = addresses.find(a => a.id === id)?.isDefault;
-    const remaining = addresses.filter(a => a.id !== id);
-    if (wasDefault && remaining.length > 0) {
-      remaining[0].isDefault = true;
+  const handleDelete = async (id: string) => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await addressesService.remove(id);
+      await fetchAddresses();
+      setDeleteConfirmId(null);
+      setToastMsg('Address removed.');
+      setToastColor('danger');
+      setShowToast(true);
+    } catch (err) {
+      setToastMsg(extractErrorMessage(err, 'Failed to remove address. Please try again.'));
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setDeleting(false);
     }
-    setAddresses(remaining);
-    setDeleteConfirmId(null);
-    setToastMsg('Address removed.');
-    setToastColor('danger');
-    setShowToast(true);
   };
 
-  const setDefault = (id: string) => {
-    setAddresses(p => p.map(a => ({ ...a, isDefault: a.id === id })));
-    setToastMsg('Default address updated!');
-    setToastColor('success');
-    setShowToast(true);
+  const setDefault = async (id: string) => {
+    try {
+      await addressesService.setDefault(id);
+      await fetchAddresses();
+      setToastMsg('Default address updated!');
+      setToastColor('success');
+      setShowToast(true);
+    } catch (err) {
+      setToastMsg(extractErrorMessage(err, 'Failed to update default address.'));
+      setToastColor('danger');
+      setShowToast(true);
+    }
   };
 
   const isFormMode = viewMode === 'add' || viewMode === 'edit';
@@ -163,7 +228,7 @@ const AddressBookPage: React.FC = () => {
               : viewMode === 'add' ? 'Add New Address'
               : 'Edit Address'}
           </IonTitle>
-          {viewMode === 'list' && (
+          {viewMode === 'list' && addresses.length > 0 && (
             <IonButtons slot="end">
               <button className="ab-add-header-btn" onClick={openAdd}>
                 <IonIcon icon={addOutline} />
@@ -173,7 +238,9 @@ const AddressBookPage: React.FC = () => {
           )}
           {isFormMode && (
             <IonButtons slot="end">
-              <button className="ab-save-header-btn" onClick={handleSave}>Save</button>
+              <button className="ab-save-header-btn" onClick={handleSave} disabled={saving}>
+                {saving ? '...' : 'Save'}
+              </button>
             </IonButtons>
           )}
         </IonToolbar>
@@ -184,8 +251,21 @@ const AddressBookPage: React.FC = () => {
         {/* ════════ LIST VIEW ════════ */}
         {viewMode === 'list' && (
           <>
-            {addresses.length === 0 ? (
-              /* Empty state */
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '80px 20px', color: '#888' }}>
+                <IonSpinner name="crescent" />
+                <p>Loading addresses...</p>
+              </div>
+            ) : loadError ? (
+              <div className="ab-empty">
+                <div className="ab-empty-icon">
+                  <IonIcon icon={warningOutline} />
+                </div>
+                <h3>Couldn't load addresses</h3>
+                <p>Check your connection and try again.</p>
+                <button className="ab-btn-solid" onClick={fetchAddresses}>Retry</button>
+              </div>
+            ) : addresses.length === 0 ? (
               <div className="ab-empty">
                 <div className="ab-empty-icon">
                   <IonIcon icon={locationOutline} />
@@ -202,14 +282,12 @@ const AddressBookPage: React.FC = () => {
                   const isDeleting = deleteConfirmId === addr.id;
                   return (
                     <div key={addr.id} className={`ab-card ${addr.isDefault ? 'default' : ''}`}>
-                      {/* Default badge */}
                       {addr.isDefault && (
                         <div className="ab-default-badge">
                           <IonIcon icon={checkmarkCircle} /> Default
                         </div>
                       )}
 
-                      {/* Address content */}
                       <div className="ab-card-body">
                         <div className="ab-card-top">
                           <div className="ab-tag-row">
@@ -222,13 +300,10 @@ const AddressBookPage: React.FC = () => {
                         </div>
                         <p className="ab-card-line">{addr.line1}</p>
                         {addr.line2 && <p className="ab-card-line">{addr.line2}</p>}
-                        <p className="ab-card-line">
-                          {addr.pincode}
-                        </p>
+                        <p className="ab-card-line">{addr.city}, {addr.state} - {addr.pincode}</p>
                         <p className="ab-card-phone">{addr.phone}</p>
                       </div>
 
-                      {/* Action row OR delete confirm */}
                       {!isDeleting ? (
                         <div className="ab-card-actions">
                           {!addr.isDefault && (
@@ -256,12 +331,12 @@ const AddressBookPage: React.FC = () => {
                           </div>
                           <div className="ab-delete-confirm-btns">
                             <button className="ab-del-cancel"
-                              onClick={() => setDeleteConfirmId(null)}>
+                              onClick={() => setDeleteConfirmId(null)} disabled={deleting}>
                               Cancel
                             </button>
                             <button className="ab-del-confirm"
-                              onClick={() => handleDelete(addr.id)}>
-                              Remove
+                              onClick={() => handleDelete(addr.id)} disabled={deleting}>
+                              {deleting ? '...' : 'Remove'}
                             </button>
                           </div>
                         </div>
@@ -270,7 +345,6 @@ const AddressBookPage: React.FC = () => {
                   );
                 })}
 
-                {/* Add more button */}
                 <button className="ab-add-more-btn" onClick={openAdd}>
                   <IonIcon icon={addOutline} />
                   Add New Address
@@ -284,11 +358,10 @@ const AddressBookPage: React.FC = () => {
         {isFormMode && (
           <div className="ab-form">
 
-            {/* Address type selector */}
             <div className="ab-form-section">
               <p className="ab-form-section-title">Address Type</p>
               <div className="ab-tag-selector">
-                {(['Home', 'Office', 'Other'] as Address['tag'][]).map(tag => (
+                {(['Home', 'Office', 'Other'] as Tag[]).map(tag => (
                   <button
                     key={tag}
                     className={`ab-tag-opt ${form.tag === tag ? 'active' : ''}`}
@@ -301,7 +374,6 @@ const AddressBookPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Contact details */}
             <div className="ab-form-section">
               <p className="ab-form-section-title">Contact Details</p>
 
@@ -327,7 +399,6 @@ const AddressBookPage: React.FC = () => {
               </AbField>
             </div>
 
-            {/* Address details */}
             <div className="ab-form-section">
               <p className="ab-form-section-title">Address Details</p>
 
@@ -352,34 +423,43 @@ const AddressBookPage: React.FC = () => {
               </AbField>
 
               <div className="ab-form-row">
-                <AbField label="Pincode" required error={errors.pincode} half>
-                  <input
-                    className="ab-input"
-                    type="number"
-                    placeholder="6-digit pincode"
-                    value={form.pincode}
-                    maxLength={6}
-                    onChange={update('pincode')}
-                  />
-                </AbField>
-                <AbField label="City" half>
+                <AbField label="City" required error={errors.city} half>
                   <input
                     className="ab-input"
                     type="text"
                     placeholder="City"
-                    value={form.line2.split(',').pop()?.trim() ?? ''}
-                    onChange={() => {}}
+                    value={form.city}
+                    onChange={update('city')}
+                  />
+                </AbField>
+                <AbField label="State" required error={errors.state} half>
+                  <input
+                    className="ab-input"
+                    type="text"
+                    placeholder="State"
+                    value={form.state}
+                    onChange={update('state')}
                   />
                 </AbField>
               </div>
+
+              <AbField label="Pincode" required error={errors.pincode}>
+                <input
+                  className="ab-input"
+                  type="number"
+                  placeholder="6-digit pincode"
+                  value={form.pincode}
+                  maxLength={6}
+                  onChange={update('pincode')}
+                />
+              </AbField>
             </div>
 
-            {/* Save / Cancel */}
             <div className="ab-form-actions">
-              <button className="ab-btn-solid" onClick={handleSave}>
-                {viewMode === 'add' ? 'Save Address' : 'Update Address'}
+              <button className="ab-btn-solid" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : viewMode === 'add' ? 'Save Address' : 'Update Address'}
               </button>
-              <button className="ab-btn-outline" onClick={() => setViewMode('list')}>
+              <button className="ab-btn-outline" onClick={() => setViewMode('list')} disabled={saving}>
                 Cancel
               </button>
             </div>
@@ -391,7 +471,7 @@ const AddressBookPage: React.FC = () => {
       <IonToast
         isOpen={showToast}
         message={toastMsg}
-        duration={1600}
+        duration={1800}
         position="bottom"
         color={toastColor}
         onDidDismiss={() => setShowToast(false)}
