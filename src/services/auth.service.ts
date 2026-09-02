@@ -1,4 +1,6 @@
 import api from './api';
+import { User } from '../context/AppContext';
+import { mapCustomerToUser } from './customerMapper';
 
 export interface LoginPayload {
   /** Sent to the backend as `email`. Only email lookups work today — see the note in LoginPage.tsx. */
@@ -12,37 +14,6 @@ export interface RegisterPayload {
   password: string;
   /** Drug License / Clinical Establishment No. / GST No. — optional. */
   license?: string;
-}
-
-/** What the Express backend actually returns for a customer (see wc-backend/src/services/auth.service.js#sanitizeCustomer). */
-interface BackendCustomer {
-  id: number;
-  email: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-  license?: string;
-  billing?: Record<string, any>;
-  shipping?: Record<string, any>;
-}
-
-/** Matches the `User` interface already defined in AppContext.tsx. */
-interface MappedUser {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  avatar?: string;
-}
-
-function mapCustomerToUser(customer: BackendCustomer): MappedUser {
-  return {
-    id: String(customer.id),
-    name: customer.username || customer.firstName || customer.email,
-    email: customer.email,
-    phone: customer.phone || '',
-  };
 }
 
 export const authService = {
@@ -77,7 +48,7 @@ export const authService = {
     return { token, user };
   },
 
-  async getMe(): Promise<MappedUser> {
+  async getMe(): Promise<User> {
     const { data: envelope } = await api.get('/customers/me');
     const user = mapCustomerToUser(envelope.data);
     // Keep the cache fresh so a later page refresh shows the latest data too.
@@ -89,7 +60,7 @@ export const authService = {
     localStorage.removeItem('medmeu_token');
     localStorage.removeItem('medmeu_user');
   },
-  getUser(): MappedUser | null {
+  getUser(): User | null {
     try { return JSON.parse(localStorage.getItem('medmeu_user') || 'null'); }
     catch { return null; }
   },

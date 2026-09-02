@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonItem, IonLabel, IonIcon, IonButton, IonAvatar, IonList,
@@ -9,17 +9,33 @@ import {
   chevronForward, logOutOutline, notificationsOutline, shieldOutline, starOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
+import { useApp, User } from '../../context/AppContext';
 import { authService } from '../../services/auth.service';
+import { ordersService } from '../../services/orders.service';
+import { addressesService } from '../../services/addresses.service';
 import './Profile.css';
-import { useState } from 'react';
 
 const ProfilePage: React.FC = () => {
   const history = useHistory();
   const { state, dispatch } = useApp();
   const [showLogout, setShowLogout] = useState(false);
 
-  const user = state.user || { name: 'Guest User', email: 'guest@medmeu.com', phone: '' };
+  // Real counts — were hardcoded to 3 and 2 before.
+  const [orderCount, setOrderCount] = useState<number | null>(null);
+  const [addressCount, setAddressCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ordersService.getMyOrderCount()
+      .then(count => { if (!cancelled) setOrderCount(count); })
+      .catch(err => console.error('Failed to load order count', err));
+    addressesService.list()
+      .then(addresses => { if (!cancelled) setAddressCount(addresses.length); })
+      .catch(err => console.error('Failed to load address count', err));
+    return () => { cancelled = true; };
+  }, []);
+
+  const user: User = state.user || { id: 'guest', name: 'Guest User', email: 'guest@medmeu.com', phone: '' };
 
   const handleLogout = () => {
     authService.logout();
@@ -48,7 +64,11 @@ const ProfilePage: React.FC = () => {
         <div className="profile-hero">
           <div className="profile-avatar-wrap">
             <IonAvatar className="profile-avatar">
-              <div className="avatar-placeholder">{user.name.charAt(0).toUpperCase()}</div>
+              {user.avatar ? (
+                <img src={user.avatar} alt="avatar" />
+              ) : (
+                <div className="avatar-placeholder">{user.name.charAt(0).toUpperCase()}</div>
+              )}
             </IonAvatar>
           </div>
           <h2>{user.name}</h2>
@@ -56,20 +76,20 @@ const ProfilePage: React.FC = () => {
           {user.phone && <p>{user.phone}</p>}
         </div>
 
-        {/* Stats */}
+        {/* Stats — real counts, fetched from the backend */}
         <div className="profile-stats">
           <div className="stat-item" onClick={() => history.push('/tabs/orders')}>
-            <span className="stat-val">3</span>
+            <span className="stat-val">{orderCount ?? '—'}</span>
             <span className="stat-label">Orders</span>
           </div>
           <div className="stat-divider" />
-          <div className="stat-item">
+          <div className="stat-item" onClick={() => history.push('/wishlist')}>
             <span className="stat-val">{state.wishlist.length}</span>
             <span className="stat-label">Wishlist</span>
           </div>
           <div className="stat-divider" />
-          <div className="stat-item">
-            <span className="stat-val">2</span>
+          <div className="stat-item" onClick={() => history.push('/profile/address-book')}>
+            <span className="stat-val">{addressCount ?? '—'}</span>
             <span className="stat-label">Addresses</span>
           </div>
         </div>

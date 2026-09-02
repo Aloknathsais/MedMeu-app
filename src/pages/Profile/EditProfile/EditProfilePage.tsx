@@ -9,7 +9,8 @@ import {
   warningOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useApp } from '../../../context/AppContext';
+import { useApp, User } from '../../../context/AppContext';
+import { profileService } from '../../../services/profile.service';
 import './EditProfile.css';
 
 type Gender = 'Male' | 'Female' | 'Other' | '';
@@ -30,20 +31,22 @@ const EditProfilePage: React.FC = () => {
   const { state, dispatch } = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const user = state.user ?? { name: '', email: '', phone: '' };
+  const user: User = state.user ?? { id: 'guest', name: '', email: '', phone: '' };
 
   const [form, setForm] = useState<ProfileForm>({
     name:    user.name  ?? '',
     email:   user.email ?? '',
     phone:   user.phone ?? '',
-    dob:     (user as any).dob     ?? '',
-    gender:  (user as any).gender  ?? '',
-    city:    (user as any).city    ?? '',
-    state:   (user as any).state   ?? '',
-    pincode: (user as any).pincode ?? '',
+    dob:     user.dob     ?? '',
+    gender:  (user.gender as Gender) ?? '',
+    city:    user.city    ?? '',
+    state:   user.state   ?? '',
+    pincode: user.pincode ?? '',
   });
 
-  const [avatar, setAvatar] = useState<string | null>((user as any).avatar ?? null);
+  // Local preview only — see the note above the file input below for why
+  // this never actually gets saved to the backend.
+  const [avatar, setAvatar] = useState<string | null>(user.avatar ?? null);
   const [errors, setErrors] = useState<Partial<ProfileForm>>({});
   const [saving, setSaving] = useState(false);
   const [showToast, setShowToast] = useState(false);
@@ -85,24 +88,34 @@ const EditProfilePage: React.FC = () => {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    // Replace with real API: await updateProfile({ ...form, avatar })
-    await new Promise(r => setTimeout(r, 1000));
-    dispatch({
-      type: 'SET_USER',
-      payload: {
-        ...user,
-        name:  form.name,
+    try {
+      const updated = await profileService.updateProfile({
+        name: form.name,
         email: form.email,
         phone: form.phone,
-        avatar,
-        ...(form as any),
-      },
-    });
-    setSaving(false);
-    setToastMsg('Profile updated successfully!');
-    setToastColor('success');
-    setShowToast(true);
-    setTimeout(() => history.goBack(), 1400);
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        dob: form.dob,
+        gender: form.gender || undefined,
+      });
+      // avatar is local-only (no upload endpoint exists on the backend yet —
+      // see the note near the file input below), so it's merged in on top
+      // of the real, backend-confirmed profile rather than sent anywhere.
+      dispatch({ type: 'SET_USER', payload: { ...updated, avatar: avatar ?? undefined } });
+      setToastMsg('Profile updated successfully!');
+      setToastColor('success');
+      setShowToast(true);
+      setTimeout(() => history.goBack(), 1400);
+    } catch (err: any) {
+      const backendMessage = err?.response?.data?.message;
+      const firstDetail = err?.response?.data?.details?.[0]?.message;
+      setToastMsg(firstDetail || backendMessage || 'Failed to update profile. Please try again.');
+      setToastColor('danger');
+      setShowToast(true);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -121,7 +134,13 @@ const EditProfilePage: React.FC = () => {
 
       <IonContent fullscreen>
 
-        {/* ── Avatar section ── */}
+        {/* ── Avatar section ──
+            No backend endpoint exists for uploading/storing a profile
+            photo (WooCommerce has no native avatar field, and no file
+            upload route has been built). This preview is local-only —
+            it'll be lost on refresh/re-login/another device until a real
+            upload endpoint is built. Kept as a preview so the UI isn't
+            broken, not because it's actually persisted. */}
         <div className="ep-avatar-section">
           <div className="ep-avatar-wrap" onClick={() => fileRef.current?.click()}>
             {avatar ? (
@@ -224,7 +243,9 @@ const EditProfilePage: React.FC = () => {
           </EpField>
         </div>
 
-        {/* ── Address section ── */}
+        {/* ── Address section ──
+            city/state/pincode map to WooCommerce's billing address —
+            real fields, not custom storage. */}
         <div className="ep-section">
           <p className="ep-section-title">Location</p>
 
@@ -269,14 +290,23 @@ const EditProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Account info (read-only display) ── */}
+        {/* ── Account info ── */}
         <div className="ep-section">
           <p className="ep-section-title">Account</p>
           <div className="ep-readonly-card">
             <div className="ep-readonly-row">
               <span className="ep-readonly-label">Member Since</span>
-              <span className="ep-readonly-value">June 2024</span>
+              {/* Real WooCommerce customer creation date now — was hardcoded "June 2024" before. */}
+              <span className="ep-readonly-value">{user.memberSince || '—'}</span>
             </div>
+            {/*
+              Account Type and Verified below are still static placeholder
+              copy — WooCommerce has no account-tier concept, and nothing
+              tracks real email-verification status yet. Left as-is
+              visually since removing them changes the design, but they
+              don't reflect real backend data. Flagging rather than
+              silently shipping them as if they were wired.
+            */}
             <div className="ep-readonly-row">
               <span className="ep-readonly-label">Account Type</span>
               <span className="ep-readonly-value">Standard</span>
