@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonPage,
   IonContent,
@@ -98,7 +98,7 @@ const tagIcon: Record<string, any> = {
 
 const CartPage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch } = useApp();
+  const { state, updateCartQty: persistCartQty, removeFromCart: persistRemoveFromCart, clearCart: persistClearCart, loadCart } = useApp();
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi" | "card">(
     "cod",
   );
@@ -172,10 +172,31 @@ const CartPage: React.FC = () => {
     setPromoError("");
   };
 
-  const updateQty = (id: string, qty: number) =>
-    dispatch({ type: "UPDATE_CART_QTY", payload: { id, quantity: qty } });
-  const remove = (id: string) =>
-    dispatch({ type: "REMOVE_FROM_CART", payload: id });
+  // Load the customer's persisted cart from the backend on mount, rather
+  // than relying on whatever (session-only) state happened to already be
+  // in AppContext — matches the same "server is the source of truth"
+  // approach used for addresses.
+  useEffect(() => {
+    loadCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Both of these now call the backend first and only update local state
+  // with what the server actually confirmed — see AppContext.tsx for why
+  // (a request "succeeding" isn't the same as the change being persisted).
+  // TODO: surface a toast on failure here, matching the pattern already
+  // used in AddressBookPage.tsx for backend Zod/validation errors, once
+  // this page has a toast helper wired in.
+  const updateQty = (id: string, qty: number) => {
+    persistCartQty(id, qty).catch((err) => {
+      console.error("Failed to update cart quantity", err);
+    });
+  };
+  const remove = (id: string) => {
+    persistRemoveFromCart(id).catch((err) => {
+      console.error("Failed to remove cart item", err);
+    });
+  };
 
   const handleSelectAddress = (id: string) => {
     setSelectedAddressId(id);
@@ -249,12 +270,22 @@ const CartPage: React.FC = () => {
         prev ? { ...prev, [field]: e.target.value } : prev,
       );
 
+  // ⚠️ Still fully mocked — a fake 900ms delay and a client-generated
+  // orderId, no real call to the checkout endpoint your API reference
+  // already documents (POST /api/orders/checkout). This wasn't part of
+  // the cart-persistence work, but it's the next real gap: right now
+  // "placing an order" doesn't create anything in WooCommerce at all,
+  // it just clears the (now real) cart and shows a fake confirmation.
   const placeOrder = async () => {
     setPlacing(true);
     await new Promise((r) => setTimeout(r, 900));
     const orderId = `MED${Date.now().toString().slice(-8)}`;
     setOrderSummary({ orderId, amount: finalTotal });
-    dispatch({ type: "CLEAR_CART" });
+    try {
+      await persistClearCart();
+    } catch (err) {
+      console.error("Failed to clear cart after order", err);
+    }
     setPlacing(false);
   };
 
