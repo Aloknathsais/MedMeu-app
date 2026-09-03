@@ -23,7 +23,7 @@ import './Home.css';
 
 const HomePage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, addToCart: persistAddToCart } = useApp();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
@@ -127,16 +127,15 @@ const HomePage: React.FC = () => {
   }, [loading, activeBanner]);
 
   const addToCart = (product: UiProduct) => {
-    dispatch({
-      type: 'ADD_TO_CART',
-      payload: {
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.image,
-        quantity: 1,
-        unit: product.unit,
-      },
+    persistAddToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1,
+      unit: product.unit,
+    }).catch((err) => {
+      console.error('Failed to add to cart', err);
     });
   };
 

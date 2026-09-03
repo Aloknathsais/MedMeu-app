@@ -15,7 +15,7 @@ import './Products.css';
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, addToCart: persistAddToCart } = useApp();
   const [qty, setQty] = useState(1);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -117,23 +117,31 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
-  const addToCart = () => {
-    dispatch({
-      type: 'ADD_TO_CART',
-      payload: {
+  const addToCart = async (): Promise<boolean> => {
+    try {
+      await persistAddToCart({
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.image,
         quantity: qty,
         unit: product.unit,
-      },
-    });
-    setToastMsg('Added to cart!');
-    setShowToast(true);
+      });
+      setToastMsg('Added to cart!');
+      setShowToast(true);
+      return true;
+    } catch (err) {
+      console.error('Failed to add to cart', err);
+      setToastMsg('Could not add to cart — please try again');
+      setShowToast(true);
+      return false;
+    }
   };
 
-  const buyNow = () => { addToCart(); history.push('/tabs/cart'); };
+  const buyNow = async () => {
+    const added = await addToCart();
+    if (added) history.push('/tabs/cart');
+  };
 
   return (
     <IonPage>

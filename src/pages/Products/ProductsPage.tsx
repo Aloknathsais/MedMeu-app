@@ -34,7 +34,7 @@ const PER_PAGE = 20;
 const ProductsPage: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, addToCart: persistAddToCart } = useApp();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('popular');
@@ -78,7 +78,9 @@ const ProductsPage: React.FC = () => {
 
   const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
-    dispatch({ type: 'ADD_TO_CART', payload: { id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit } });
+    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit }).catch((err) => {
+      console.error('Failed to add to cart', err);
+    });
   };
 
   const toggleWishlist = (id: string, e: any) => {
