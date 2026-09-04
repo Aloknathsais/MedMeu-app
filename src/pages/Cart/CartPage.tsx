@@ -31,11 +31,16 @@ import {
 } from "ionicons/icons";
 import { useHistory } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
+import { addressesService, Address, AddressInput } from "../../services/addresses.service";
 // import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import "./Cart.css";
 
-/* ── Mock promo codes ── */
+/* ── Mock promo codes ──
+   Still mock — no backend coupon-validation endpoint exists yet
+   (see the MedMeu API reference's "Coupons" section: it recommends a
+   custom validate-coupon endpoint, which hasn't been built). Not part
+   of this address-wiring pass. */
 const PROMO_CODES: Record<
   string,
   { type: "percent" | "flat" | "shipping"; value: number; label: string }
@@ -49,51 +54,37 @@ const PROMO_CODES: Record<
   },
 };
 
-/* ── Mock addresses ── */
-interface Address {
-  id: string;
-  name: string;
-  tag: "Home" | "Office" | "Other";
-  line1: string;
-  line2: string;
-  pincode: string;
-  phone: string;
-}
-
-const MOCK_ADDRESSES: Address[] = [
-  {
-    id: "addr1",
-    name: "John Doe",
-    tag: "Home",
-    line1: "123, MG Road",
-    line2: "Bhubaneswar, Odisha",
-    pincode: "751001",
-    phone: "+91 98765 43210",
-  },
-  {
-    id: "addr2",
-    name: "John Doe",
-    tag: "Office",
-    line1: "45, Janpath Tower, 3rd Floor",
-    line2: "Saheed Nagar, Bhubaneswar, Odisha",
-    pincode: "751007",
-    phone: "+91 98765 43210",
-  },
-  {
-    id: "addr3",
-    name: "John Doe",
-    tag: "Other",
-    line1: "8, New Colony, Near AIIMS",
-    line2: "Patrapada, Bhubaneswar, Odisha",
-    pincode: "751019",
-    phone: "+91 98765 43210",
-  },
-];
-
 const tagIcon: Record<string, any> = {
   Home: homeOutline,
   Office: businessOutline,
   Other: locationSharp,
+};
+const getTagIcon = (label?: string) => tagIcon[label ?? ""] ?? locationSharp;
+
+// Shape of the add/edit address form. Mirrors AddressInput from
+// addresses.service.ts, plus a UI-only `tag` alias for the backend's
+// `label` field (kept as `tag` here so the existing "Home/Office/Other"
+// selector below didn't need renaming throughout).
+interface AddressFormState {
+  name: string;
+  tag: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  pincode: string;
+  phone: string;
+}
+
+const EMPTY_FORM: AddressFormState = {
+  name: "",
+  tag: "Home",
+  line1: "",
+  line2: "",
+  city: "",
+  state: "",
+  pincode: "",
+  phone: "",
 };
 
 const CartPage: React.FC = () => {
@@ -108,21 +99,25 @@ const CartPage: React.FC = () => {
     amount: number;
   } | null>(null);
 
-  // Address state
-  const [addresses, setAddresses] = useState<Address[]>(MOCK_ADDRESSES);
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("addr1");
+  // Address state — now backed by the real addresses API instead of
+  // MOCK_ADDRESSES. addressesLoading/addressesError cover the initial
+  // fetch; addError is specifically for add/edit form submission errors
+  // (including backend Zod validation errors surfaced from the API,
+  // same pattern as AddressBookPage.tsx).
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [addressesLoading, setAddressesLoading] = useState(true);
+  const [addressesError, setAddressesError] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [showAddressSheet, setShowAddressSheet] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    name: "",
-    tag: "Home",
-    line1: "",
-    line2: "",
-    pincode: "",
-    phone: "",
-  });
+  // One shared form for both "add" and "edit" — editingId tells us which
+  // mode we're in. (The old code used a full Address for editingAddress,
+  // but the real Address type has `label`, not the UI's `tag` field, so
+  // a single form-shaped state avoids that mismatch entirely.)
+  const [formState, setFormState] = useState<AddressFormState>(EMPTY_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [addError, setAddError] = useState("");
-  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
+  const [savingAddress, setSavingAddress] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
     null,
   );
@@ -153,6 +148,34 @@ const CartPage: React.FC = () => {
 
   const selectedAddress =
     addresses.find((a) => a.id === selectedAddressId) ?? addresses[0];
+
+  // Loads the customer's real saved addresses on mount, and preselects
+  // whichever one is marked default (falling back to the first) —
+  // mirrors how AddressBookPage.tsx treats isDefault as the source of
+  // truth rather than "whatever was selected last time" local state.
+  useEffect(() => {
+    let cancelled = false;
+    setAddressesLoading(true);
+    setAddressesError("");
+    addressesService
+      .list()
+      .then((list) => {
+        if (cancelled) return;
+        setAddresses(list);
+        const preferred = list.find((a) => a.isDefault) ?? list[0];
+        if (preferred) setSelectedAddressId(preferred.id);
+      })
+      .catch((err) => {
+        console.error("Failed to load addresses", err);
+        if (!cancelled) setAddressesError("Could not load your saved addresses.");
+      })
+      .finally(() => {
+        if (!cancelled) setAddressesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const applyPromo = () => {
     const code = promoInput.trim().toUpperCase();
@@ -204,71 +227,97 @@ const CartPage: React.FC = () => {
     setShowAddForm(false);
   };
 
-  const handleSaveAddress = () => {
-    const { name, line1, pincode, phone } = editingAddress
-      ? editingAddress
-      : newAddress;
-    if (!name || !line1 || !pincode || !phone) {
+  const handleSaveAddress = async () => {
+    const { name, line1, city, state: st, pincode, phone } = formState;
+    if (!name || !line1 || !city || !st || !pincode || !phone) {
       setAddError("Please fill all required fields");
       return;
     }
-    if (pincode.length !== 6) {
-      setAddError("Enter a valid 6-digit pincode");
+    if (phone.replace(/\D/g, "").length < 6) {
+      setAddError("Enter a valid phone number");
       return;
     }
 
-    if (editingAddress) {
-      // Update existing
-      setAddresses((prev) =>
-        prev.map((a) => (a.id === editingAddress.id ? editingAddress : a)),
-      );
-      setEditingAddress(null);
-    } else {
-      // Add new
-      const id = `addr${Date.now()}`;
-      const addr: Address = {
-        id,
-        ...newAddress,
-        tag: newAddress.tag as Address["tag"],
-      };
-      setAddresses((prev) => [...prev, addr]);
-      setSelectedAddressId(id);
-      setNewAddress({
-        name: "",
-        tag: "Home",
-        line1: "",
-        line2: "",
-        pincode: "",
-        phone: "",
-      });
-    }
-    setShowAddForm(false);
-    setShowAddressSheet(false);
+    const input: AddressInput = {
+      label: formState.tag,
+      name,
+      phone,
+      line1,
+      line2: formState.line2 || undefined,
+      city,
+      state: st,
+      pincode,
+      country: "IN",
+    };
+
+    setSavingAddress(true);
     setAddError("");
+    try {
+      if (editingId) {
+        const updated = await addressesService.update(editingId, input);
+        setAddresses((prev) => prev.map((a) => (a.id === editingId ? updated : a)));
+      } else {
+        const created = await addressesService.create(input);
+        setAddresses((prev) => [...prev, created]);
+        setSelectedAddressId(created.id);
+      }
+      setFormState(EMPTY_FORM);
+      setEditingId(null);
+      setShowAddForm(false);
+      setShowAddressSheet(false);
+    } catch (err: any) {
+      // Surface the backend's real Zod validation message when there is
+      // one, instead of a generic failure — same pattern as
+      // AddressBookPage.tsx.
+      const message =
+        err?.response?.data?.message ||
+        err?.response?.data?.details?.[0]?.message ||
+        "Could not save this address — please try again.";
+      setAddError(message);
+    } finally {
+      setSavingAddress(false);
+    }
   };
 
-  const handleDeleteAddress = (id: string) => {
-    setAddresses((prev) => prev.filter((a) => a.id !== id));
-    if (selectedAddressId === id) {
-      const remaining = addresses.filter((a) => a.id !== id);
-      setSelectedAddressId(remaining[0]?.id ?? "");
+  const handleDeleteAddress = async (id: string) => {
+    try {
+      // Backend returns the remaining list, including any address it
+      // auto-promoted to default after this deletion — use that as the
+      // source of truth rather than filtering locally.
+      const remaining = await addressesService.remove(id);
+      setAddresses(remaining);
+      if (selectedAddressId === id) {
+        const preferred = remaining.find((a) => a.isDefault) ?? remaining[0];
+        setSelectedAddressId(preferred?.id ?? "");
+      }
+    } catch (err) {
+      console.error("Failed to delete address", err);
+    } finally {
+      setShowDeleteConfirm(null);
     }
-    setShowDeleteConfirm(null);
   };
 
   const startEdit = (addr: Address, e: React.MouseEvent) => {
     e.stopPropagation();
-    setEditingAddress({ ...addr });
+    setFormState({
+      name: addr.name,
+      tag: addr.label || "Other",
+      line1: addr.line1,
+      line2: addr.line2 || "",
+      city: addr.city,
+      state: addr.state,
+      pincode: addr.pincode,
+      phone: addr.phone,
+    });
+    setEditingId(addr.id);
     setShowAddForm(true);
     setAddError("");
   };
 
-  const updateEdit =
-    (field: string) =>
+  const updateForm =
+    (field: keyof AddressFormState) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setEditingAddress((prev) =>
-        prev ? { ...prev, [field]: e.target.value } : prev,
-      );
+      setFormState((prev) => ({ ...prev, [field]: e.target.value }));
 
   // ⚠️ Still fully mocked — a fake 900ms delay and a client-generated
   // orderId, no real call to the checkout endpoint your API reference
@@ -293,11 +342,6 @@ const CartPage: React.FC = () => {
     setOrderSummary(null);
     history.push("/tabs/orders");
   };
-
-  const updateNew =
-    (field: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setNewAddress((p) => ({ ...p, [field]: e.target.value }));
 
   return (
     <IonPage>
@@ -406,27 +450,59 @@ const CartPage: React.FC = () => {
                   <IonIcon icon={locationOutline} className="card-title-icon" />
                   <span>Delivery Address</span>
                 </div>
-                <button
-                  className="change-btn"
-                  onClick={() => {
-                    setShowAddressSheet(true);
-                    setShowAddForm(false);
-                  }}
-                >
-                  Change
-                </button>
+                {!addressesLoading && selectedAddress && (
+                  <button
+                    className="change-btn"
+                    onClick={() => {
+                      setShowAddressSheet(true);
+                      setShowAddForm(false);
+                    }}
+                  >
+                    Change
+                  </button>
+                )}
               </div>
-              <div className="address-body">
-                <p className="address-name">
-                  {selectedAddress.name}
-                  <span className="address-tag">{selectedAddress.tag}</span>
+              {addressesLoading ? (
+                <p className="address-text">Loading your addresses…</p>
+              ) : addressesError ? (
+                <p className="address-text" style={{ color: "#C62828" }}>
+                  {addressesError}
                 </p>
-                <p className="address-text">
-                  {selectedAddress.line1}, {selectedAddress.line2} -{" "}
-                  {selectedAddress.pincode}
-                </p>
-                <p className="address-phone">{selectedAddress.phone}</p>
-              </div>
+              ) : selectedAddress ? (
+                <div className="address-body">
+                  <p className="address-name">
+                    {selectedAddress.name}
+                    {selectedAddress.label && (
+                      <span className="address-tag">{selectedAddress.label}</span>
+                    )}
+                  </p>
+                  <p className="address-text">
+                    {selectedAddress.line1}
+                    {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ""},{" "}
+                    {selectedAddress.city}, {selectedAddress.state} -{" "}
+                    {selectedAddress.pincode}
+                  </p>
+                  <p className="address-phone">{selectedAddress.phone}</p>
+                </div>
+              ) : (
+                <div className="address-body">
+                  <p className="address-text">
+                    You don't have a saved delivery address yet.
+                  </p>
+                  <button
+                    className="change-btn"
+                    onClick={() => {
+                      setFormState(EMPTY_FORM);
+                      setEditingId(null);
+                      setShowAddForm(true);
+                      setShowAddressSheet(true);
+                      setAddError("");
+                    }}
+                  >
+                    Add Address
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Payment method */}
@@ -595,7 +671,7 @@ const CartPage: React.FC = () => {
           <button
             className="checkout-btn"
             onClick={placeOrder}
-            disabled={placing}
+            disabled={placing || !selectedAddress}
           >
             {placing ? "Placing..." : "Place Order"}
             {!placing && <IonIcon icon={chevronForward} />}
@@ -610,7 +686,7 @@ const CartPage: React.FC = () => {
           onClick={() => {
             setShowAddressSheet(false);
             setShowAddForm(false);
-            setEditingAddress(null);
+            setEditingId(null);
             setAddError("");
           }}
         >
@@ -623,7 +699,7 @@ const CartPage: React.FC = () => {
             <div className="addr-sheet-header">
               <h3>
                 {showAddForm
-                  ? editingAddress
+                  ? editingId
                     ? "Edit Address"
                     : "Add New Address"
                   : "Select Delivery Address"}
@@ -633,7 +709,7 @@ const CartPage: React.FC = () => {
                 onClick={() => {
                   setShowAddressSheet(false);
                   setShowAddForm(false);
-                  setEditingAddress(null);
+                  setEditingId(null);
                   setAddError("");
                 }}
               >
@@ -693,22 +769,30 @@ const CartPage: React.FC = () => {
                           <div className="addr-item-body">
                             <div className="addr-item-top">
                               <IonIcon
-                                icon={tagIcon[addr.tag]}
+                                icon={getTagIcon(addr.label)}
                                 className="addr-tag-icon"
                               />
-                              <span
-                                className={`addr-tag-chip ${addr.tag.toLowerCase()}`}
-                              >
-                                {addr.tag}
-                              </span>
+                              {addr.label && (
+                                <span
+                                  className={`addr-tag-chip ${addr.label.toLowerCase()}`}
+                                >
+                                  {addr.label}
+                                </span>
+                              )}
                               <span className="addr-item-name">
                                 {addr.name}
                               </span>
+                              {addr.isDefault && (
+                                <span className="addr-tag-chip default">Default</span>
+                              )}
                             </div>
                             <p className="addr-item-line">
-                              {addr.line1}, {addr.line2}
+                              {addr.line1}
+                              {addr.line2 ? `, ${addr.line2}` : ""}
                             </p>
-                            <p className="addr-item-line">{addr.pincode}</p>
+                            <p className="addr-item-line">
+                              {addr.city}, {addr.state} - {addr.pincode}
+                            </p>
                             <p className="addr-item-phone">{addr.phone}</p>
                           </div>
                           {isSelected && (
@@ -747,15 +831,8 @@ const CartPage: React.FC = () => {
                 <button
                   className="addr-add-new-btn"
                   onClick={() => {
-                    setEditingAddress(null);
-                    setNewAddress({
-                      name: "",
-                      tag: "Home",
-                      line1: "",
-                      line2: "",
-                      pincode: "",
-                      phone: "",
-                    });
+                    setEditingId(null);
+                    setFormState(EMPTY_FORM);
                     setShowAddForm(true);
                     setAddError("");
                   }}
@@ -776,12 +853,8 @@ const CartPage: React.FC = () => {
                   <input
                     className="addr-input"
                     placeholder="Enter full name"
-                    value={
-                      editingAddress ? editingAddress.name : newAddress.name
-                    }
-                    onChange={
-                      editingAddress ? updateEdit("name") : updateNew("name")
-                    }
+                    value={formState.name}
+                    onChange={updateForm("name")}
                   />
                 </div>
                 <div className="addr-form-group">
@@ -790,20 +863,14 @@ const CartPage: React.FC = () => {
                   </label>
                   <div className="addr-tag-selector">
                     {["Home", "Office", "Other"].map((tag) => {
-                      const isActive = editingAddress
-                        ? editingAddress.tag === tag
-                        : newAddress.tag === tag;
+                      const isActive = formState.tag === tag;
                       return (
                         <button
                           key={tag}
                           className={`addr-tag-opt ${isActive ? "active" : ""}`}
-                          onClick={() => {
-                            if (editingAddress)
-                              setEditingAddress((p) =>
-                                p ? { ...p, tag: tag as Address["tag"] } : p,
-                              );
-                            else setNewAddress((p) => ({ ...p, tag }));
-                          }}
+                          onClick={() =>
+                            setFormState((p) => ({ ...p, tag }))
+                          }
                         >
                           <IonIcon icon={tagIcon[tag]} />
                           {tag}
@@ -820,26 +887,46 @@ const CartPage: React.FC = () => {
                   <input
                     className="addr-input"
                     placeholder="Enter address line 1"
-                    value={
-                      editingAddress ? editingAddress.line1 : newAddress.line1
-                    }
-                    onChange={
-                      editingAddress ? updateEdit("line1") : updateNew("line1")
-                    }
+                    value={formState.line1}
+                    onChange={updateForm("line1")}
                   />
                 </div>
                 <div className="addr-form-group">
-                  <label>Area / Street / City</label>
+                  <label>Area / Street (optional)</label>
                   <input
                     className="addr-input"
-                    placeholder="Enter address line 2"
-                    value={
-                      editingAddress ? editingAddress.line2 : newAddress.line2
-                    }
-                    onChange={
-                      editingAddress ? updateEdit("line2") : updateNew("line2")
-                    }
+                    placeholder="Enter area or street"
+                    value={formState.line2}
+                    onChange={updateForm("line2")}
                   />
+                </div>
+                {/* Real, editable City and State fields — the backend's
+                    validator requires both as non-empty, separate fields
+                    (same requirement AddressBookPage.tsx's form has to
+                    satisfy), so these can't be derived/parsed from line2. */}
+                <div className="addr-form-row">
+                  <div className="addr-form-group half">
+                    <label>
+                      City <span className="addr-required">*</span>
+                    </label>
+                    <input
+                      className="addr-input"
+                      placeholder="City"
+                      value={formState.city}
+                      onChange={updateForm("city")}
+                    />
+                  </div>
+                  <div className="addr-form-group half">
+                    <label>
+                      State <span className="addr-required">*</span>
+                    </label>
+                    <input
+                      className="addr-input"
+                      placeholder="State"
+                      value={formState.state}
+                      onChange={updateForm("state")}
+                    />
+                  </div>
                 </div>
                 <div className="addr-form-row">
                   <div className="addr-form-group half">
@@ -850,16 +937,8 @@ const CartPage: React.FC = () => {
                       className="addr-input"
                       placeholder="6-digit pincode"
                       type="number"
-                      value={
-                        editingAddress
-                          ? editingAddress.pincode
-                          : newAddress.pincode
-                      }
-                      onChange={
-                        editingAddress
-                          ? updateEdit("pincode")
-                          : updateNew("pincode")
-                      }
+                      value={formState.pincode}
+                      onChange={updateForm("pincode")}
                     />
                   </div>
                   <div className="addr-form-group half">
@@ -870,14 +949,8 @@ const CartPage: React.FC = () => {
                       className="addr-input"
                       placeholder="Mobile number"
                       type="tel"
-                      value={
-                        editingAddress ? editingAddress.phone : newAddress.phone
-                      }
-                      onChange={
-                        editingAddress
-                          ? updateEdit("phone")
-                          : updateNew("phone")
-                      }
+                      value={formState.phone}
+                      onChange={updateForm("phone")}
                     />
                   </div>
                 </div>
@@ -887,14 +960,22 @@ const CartPage: React.FC = () => {
                     className="addr-cancel-btn"
                     onClick={() => {
                       setShowAddForm(false);
-                      setEditingAddress(null);
+                      setEditingId(null);
                       setAddError("");
                     }}
                   >
                     Back
                   </button>
-                  <button className="addr-save-btn" onClick={handleSaveAddress}>
-                    {editingAddress ? "Save Changes" : "Save & Use"}
+                  <button
+                    className="addr-save-btn"
+                    onClick={handleSaveAddress}
+                    disabled={savingAddress}
+                  >
+                    {savingAddress
+                      ? "Saving..."
+                      : editingId
+                      ? "Save Changes"
+                      : "Save & Use"}
                   </button>
                 </div>
               </div>
