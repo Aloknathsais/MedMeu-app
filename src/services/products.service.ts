@@ -14,6 +14,8 @@ interface WcProduct {
   stock_quantity: number | null;
   manage_stock: boolean;
   images: { src: string }[];
+  /** WooCommerce native field — string, in whatever unit the store's Settings > General > Measurements > Weight unit is set to. Assumed kg here to match the shipping tier config; confirm in wp-admin if shipping costs look wrong. */
+  weight?: string;
   short_description?: string;
   description?: string;
   categories?: { id: number; name: string }[];
@@ -48,6 +50,14 @@ export interface UiProduct {
    * the WooCommerce side — flagging rather than fabricating a value.
    */
   unit: string;
+  /**
+   * Weight in kg (assumed — see WcProduct.weight comment). Used to
+   * calculate the real weight-based delivery charge in CartPage.tsx.
+   * Falls back to 0 when WooCommerce has no weight set for this
+   * product — under-charges shipping for that item rather than
+   * blocking anything, same defensive posture as `unit`.
+   */
+  weight: number;
   /** Plain-text short description. */
   shortDescription?: string;
   /** Full description, as raw HTML from WooCommerce's own product editor (trusted first-party content). */
@@ -80,6 +90,7 @@ function mapWcProductToUi(p: WcProduct): UiProduct {
     inStock: p.stock_status === 'instock',
     stockQuantity: p.manage_stock && p.stock_quantity != null ? p.stock_quantity : undefined,
     unit: '',
+    weight: parseFloat(p.weight ?? '') || 0,
     shortDescription: p.short_description
       ? p.short_description.replace(/<[^>]*>/g, '').trim()
       : undefined,

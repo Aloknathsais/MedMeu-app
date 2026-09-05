@@ -78,7 +78,7 @@ const ProductsPage: React.FC = () => {
 
   const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
-    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit }).catch((err) => {
+    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit, weight: product.weight }).catch((err) => {
       console.error('Failed to add to cart', err);
     });
   };

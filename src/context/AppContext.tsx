@@ -3,6 +3,18 @@ import { cartService } from '../services/cart.service';
 
 export interface CartItem {
   id: string; name: string; price: number; image: string; quantity: number; unit: string;
+  /**
+   * Weight in kilograms, used to calculate the real weight-based
+   * delivery charge in CartPage.tsx (see SHIPPING_WEIGHT_TIERS there).
+   * Optional because not every WooCommerce product may have a weight
+   * set — CartPage.tsx treats a missing weight as 0 rather than
+   * failing, same defensive fallback used for `unit`. A product
+   * missing its weight will under-charge shipping for that item rather
+   * than blocking the add entirely; worth an audit on the product
+   * catalog side if this turns out to be common; incorrect shipping
+   * revenue is a real business cost.
+   */
+  weight?: number;
 }
 export interface User {
   id: string; name: string; email: string; phone: string; avatar?: string;

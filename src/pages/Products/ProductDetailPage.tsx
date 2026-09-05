@@ -126,6 +126,7 @@ const ProductDetailPage: React.FC = () => {
         image: product.image,
         quantity: qty,
         unit: product.unit,
+        weight: product.weight,
       });
       setToastMsg('Added to cart!');
       setShowToast(true);

@@ -39,20 +39,52 @@ import "./Cart.css";
 /* ── Mock promo codes ──
    Still mock — no backend coupon-validation endpoint exists yet
    (see the MedMeu API reference's "Coupons" section: it recommends a
-   custom validate-coupon endpoint, which hasn't been built). Not part
-   of this address-wiring pass. */
+   custom validate-coupon endpoint, which hasn't been built).
+   FREESHIP removed: the website's real shipping rule (see
+   SHIPPING_WEIGHT_TIERS below) has no free-delivery path at any
+   weight or order value — a shipping-type promo would misrepresent
+   what the website actually charges. MED10/FLAT50 (item-total
+   discounts) don't conflict with that, so they're kept as-is. */
 const PROMO_CODES: Record<
   string,
-  { type: "percent" | "flat" | "shipping"; value: number; label: string }
+  { type: "percent" | "flat"; value: number; label: string }
 > = {
   MED10: { type: "percent", value: 10, label: "10% off on item total" },
   FLAT50: { type: "flat", value: 50, label: "₹50 off on your order" },
-  FREESHIP: {
-    type: "shipping",
-    value: 0,
-    label: "Free delivery on this order",
-  },
 };
+
+/**
+ * Matches the weight-based shipping rules configured in WooCommerce
+ * (Shipping Extensions → Pricing Rules on the live site — see the
+ * screenshot this was transcribed from). Tiers are inclusive of their
+ * upper bound; a cart's shipping cost is the cost of the first tier
+ * whose upTo is >= the cart's total weight.
+ *
+ * ⚠️ This is a transcription of a screenshot, not a live read of the
+ * plugin's config — if the website's rules ever change, this needs to
+ * be updated to match by hand, since there's no endpoint currently
+ * wired up to read the plugin's actual configured tiers at runtime.
+ *
+ * ⚠️ No tier covers >20kg — the plugin's own table stops there too.
+ * Falling back to the top tier's cost (rather than ₹0) is a safe
+ * default, not a real business decision — flag with whoever owns
+ * pricing if carts routinely exceed 20kg.
+ */
+const SHIPPING_WEIGHT_TIERS: { upToKg: number; cost: number }[] = [
+  { upToKg: 0.4, cost: 70 },
+  { upToKg: 0.8, cost: 120 },
+  { upToKg: 1.2, cost: 140 },
+  { upToKg: 1.6, cost: 160 },
+  { upToKg: 2.0, cost: 190 },
+  { upToKg: 20, cost: 220 },
+];
+
+function calculateShippingCost(totalWeightKg: number, hasItems: boolean): number {
+  if (!hasItems) return 0; // nothing to ship
+  if (totalWeightKg <= 0) return SHIPPING_WEIGHT_TIERS[0].cost; // items present but no weight data — fall back to the lowest tier rather than charging ₹0
+  const tier = SHIPPING_WEIGHT_TIERS.find((t) => totalWeightKg <= t.upToKg);
+  return tier ? tier.cost : SHIPPING_WEIGHT_TIERS[SHIPPING_WEIGHT_TIERS.length - 1].cost;
+}
 
 const tagIcon: Record<string, any> = {
   Home: homeOutline,
@@ -129,22 +161,36 @@ const CartPage: React.FC = () => {
   const [promoError, setPromoError] = useState("");
 
   const total = state.cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
-  const delivery = total >= 499 || total === 0 ? 0 : 49;
+  const totalWeightKg = state.cartItems.reduce(
+    (s, i) => s + (i.weight ?? 0) * i.quantity,
+    0,
+  );
+  const delivery = calculateShippingCost(totalWeightKg, state.cartItems.length > 0);
   const savings = state.cartItems.reduce(
     (s, i) => s + i.price * 0.1 * i.quantity,
     0,
   );
-  const amountToFreeDelivery = 499 - total;
+
+  // Minimum order value to place an order at all — applied to the item
+  // subtotal (before delivery is added), which is the standard meaning
+  // of "minimum order value." If this was meant to apply to the final
+  // payable amount (items + delivery) instead, swap `total` for
+  // `finalTotal` in both lines below.
+  const MIN_ORDER_VALUE = 2000;
+  const meetsMinOrder = state.cartItems.length === 0 || total >= MIN_ORDER_VALUE;
+  const amountToMinOrder = MIN_ORDER_VALUE - total;
 
   const activePromo = promoCode ? PROMO_CODES[promoCode] : null;
-  const finalDelivery = activePromo?.type === "shipping" ? 0 : delivery;
   const promoDiscount =
     activePromo?.type === "percent"
       ? Math.round((total * activePromo.value) / 100)
       : activePromo?.type === "flat"
       ? Math.min(activePromo.value, total)
       : 0;
-  const finalTotal = total + finalDelivery - promoDiscount;
+  // Shipping is never discounted or waived — no promo type here
+  // reduces it, matching "no free delivery" as a hard rule rather
+  // than something a promo code could override.
+  const finalTotal = total + delivery - promoDiscount;
 
   const selectedAddress =
     addresses.find((a) => a.id === selectedAddressId) ?? addresses[0];
@@ -326,6 +372,7 @@ const CartPage: React.FC = () => {
   // "placing an order" doesn't create anything in WooCommerce at all,
   // it just clears the (now real) cart and shows a fake confirmation.
   const placeOrder = async () => {
+    if (!meetsMinOrder || !selectedAddress) return;
     setPlacing(true);
     await new Promise((r) => setTimeout(r, 900));
     const orderId = `MED${Date.now().toString().slice(-8)}`;
@@ -377,30 +424,29 @@ const CartPage: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Free delivery progress */}
+            {/* Shipping is always charged, by cart weight — no free-
+                delivery threshold exists on the real website (see
+                SHIPPING_WEIGHT_TIERS above), so this replaces what used
+                to be a "spend ₹X more for free delivery" progress bar. */}
             <div className="delivery-progress-card">
-              {delivery === 0 ? (
-                <div className="delivery-success">
-                  <IonIcon icon={checkmarkCircle} />
-                  <span>You've unlocked FREE delivery on this order!</span>
-                </div>
-              ) : (
-                <>
-                  <p className="delivery-progress-text">
-                    Add <strong>₹{amountToFreeDelivery}</strong> more to get{" "}
-                    <strong>FREE delivery</strong>
-                  </p>
-                  <div className="progress-bar-track">
-                    <div
-                      className="progress-bar-fill"
-                      style={{
-                        width: `${Math.min(100, (total / 499) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                </>
-              )}
+              <p className="delivery-progress-text">
+                Delivery charge: <strong>₹{delivery}</strong> (based on{" "}
+                {totalWeightKg.toFixed(2)} kg)
+              </p>
             </div>
+
+            {/* Minimum order value — checkout stays disabled below this,
+                so this needs to be visible wherever the user is looking,
+                not just as a disabled-button tooltip. */}
+            {!meetsMinOrder && (
+              <div className="delivery-progress-card" style={{ borderColor: "#C62828" }}>
+                <p className="delivery-progress-text" style={{ color: "#C62828" }}>
+                  Minimum order value is <strong>₹{MIN_ORDER_VALUE}</strong>.
+                  Add <strong>₹{amountToMinOrder}</strong> more to place this
+                  order.
+                </p>
+              </div>
+            )}
 
             {/* Cart items */}
             <div className="cart-items">
@@ -565,13 +611,7 @@ const CartPage: React.FC = () => {
               </div>
               <div className="bill-row">
                 <span>Delivery Fee</span>
-                <span>
-                  {finalDelivery === 0 ? (
-                    <span className="free-tag">FREE</span>
-                  ) : (
-                    `₹${finalDelivery}`
-                  )}
-                </span>
+                <span>₹{delivery}</span>
               </div>
               <div className="bill-divider" />
               <div className="promo-section">
@@ -671,7 +711,7 @@ const CartPage: React.FC = () => {
           <button
             className="checkout-btn"
             onClick={placeOrder}
-            disabled={placing || !selectedAddress}
+            disabled={placing || !selectedAddress || !meetsMinOrder}
           >
             {placing ? "Placing..." : "Place Order"}
             {!placing && <IonIcon icon={chevronForward} />}
