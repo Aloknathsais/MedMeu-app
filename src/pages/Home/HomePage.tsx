@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar,
   IonBadge, IonIcon, IonRefresher, IonRefresherContent,
-  IonButton, IonChip, IonMenuButton,
+  IonButton, IonChip, IonMenuButton, IonToast,
 } from '@ionic/react';
 import {
   cartOutline, notificationsOutline, heartOutline, heart,
@@ -126,6 +126,9 @@ const HomePage: React.FC = () => {
     };
   }, [loading, activeBanner]);
 
+  const [cartToastMsg, setCartToastMsg] = useState('');
+  const [showCartToast, setShowCartToast] = useState(false);
+
   const addToCart = (product: UiProduct) => {
     persistAddToCart({
       id: product.id,
@@ -135,9 +138,22 @@ const HomePage: React.FC = () => {
       quantity: 1,
       unit: product.unit,
       weight: product.weight,
-    }).catch((err) => {
-      console.error('Failed to add to cart', err);
-    });
+    })
+      .then(() => {
+        setCartToastMsg('Added to cart!');
+        setShowCartToast(true);
+      })
+      .catch((err) => {
+        console.error('Failed to add to cart', err);
+        // Now backed by the real WooCommerce cart (see cart.service.js /
+        // medmeu-app-cart-api.php), so a failure here can be a genuine
+        // rejection — e.g. out of stock — not just a network hiccup.
+        // Surface WooCommerce's actual message when there is one.
+        const message =
+          err?.response?.data?.message || 'Could not add to cart — please try again.';
+        setCartToastMsg(message);
+        setShowCartToast(true);
+      });
   };
 
   const toggleWishlist = (id: string) => dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
@@ -419,6 +435,14 @@ const HomePage: React.FC = () => {
         )}
         {/* <div style={{ height: 24 }} /> */}
       </IonContent>
+      <IonToast
+        isOpen={showCartToast}
+        message={cartToastMsg}
+        duration={1500}
+        onDidDismiss={() => setShowCartToast(false)}
+        position="bottom"
+        color={cartToastMsg === 'Added to cart!' ? 'success' : 'danger'}
+      />
     </IonPage>
   );
 };

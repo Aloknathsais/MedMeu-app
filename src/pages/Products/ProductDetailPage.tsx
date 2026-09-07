@@ -131,9 +131,13 @@ const ProductDetailPage: React.FC = () => {
       setToastMsg('Added to cart!');
       setShowToast(true);
       return true;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to add to cart', err);
-      setToastMsg('Could not add to cart — please try again');
+      // Real WooCommerce cart now — a failure can be a genuine
+      // rejection (e.g. out of stock), not just a network hiccup.
+      const message =
+        err?.response?.data?.message || 'Could not add to cart — please try again.';
+      setToastMsg(message);
       setShowToast(true);
       return false;
     }

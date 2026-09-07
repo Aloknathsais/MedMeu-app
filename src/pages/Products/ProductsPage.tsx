@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonBackButton,
-  IonButtons, IonIcon, IonButton, IonSpinner,
+  IonButtons, IonIcon, IonButton, IonSpinner, IonToast,
 } from '@ionic/react';
 import {
   starSharp, heartOutline, heart, optionsOutline, closeOutline,
@@ -76,11 +76,25 @@ const ProductsPage: React.FC = () => {
       .catch(err => console.error('Failed to load categories', err));
   }, []);
 
+  const [cartToastMsg, setCartToastMsg] = useState('');
+  const [showCartToast, setShowCartToast] = useState(false);
+
   const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
-    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit, weight: product.weight }).catch((err) => {
-      console.error('Failed to add to cart', err);
-    });
+    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit, weight: product.weight })
+      .then(() => {
+        setCartToastMsg('Added to cart!');
+        setShowCartToast(true);
+      })
+      .catch((err) => {
+        console.error('Failed to add to cart', err);
+        // Real WooCommerce cart now — a failure can be a genuine
+        // rejection (e.g. out of stock), not just a network hiccup.
+        const message =
+          err?.response?.data?.message || 'Could not add to cart — please try again.';
+        setCartToastMsg(message);
+        setShowCartToast(true);
+      });
   };
 
   const toggleWishlist = (id: string, e: any) => {
@@ -480,6 +494,14 @@ const ProductsPage: React.FC = () => {
           </div>
         </div>
       )}
+      <IonToast
+        isOpen={showCartToast}
+        message={cartToastMsg}
+        duration={1500}
+        onDidDismiss={() => setShowCartToast(false)}
+        position="bottom"
+        color={cartToastMsg === 'Added to cart!' ? 'success' : 'danger'}
+      />
     </IonPage>
   );
 };
