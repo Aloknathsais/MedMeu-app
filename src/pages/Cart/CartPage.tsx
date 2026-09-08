@@ -32,26 +32,19 @@ import {
 import { useHistory } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { addressesService, Address, AddressInput } from "../../services/addresses.service";
+import { couponsService, CouponValidationResult } from "../../services/coupons.service";
 // import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import "./Cart.css";
 
-/* ── Mock promo codes ──
-   Still mock — no backend coupon-validation endpoint exists yet
-   (see the MedMeu API reference's "Coupons" section: it recommends a
-   custom validate-coupon endpoint, which hasn't been built).
-   FREESHIP removed: the website's real shipping rule (see
-   SHIPPING_WEIGHT_TIERS below) has no free-delivery path at any
-   weight or order value — a shipping-type promo would misrepresent
-   what the website actually charges. MED10/FLAT50 (item-total
-   discounts) don't conflict with that, so they're kept as-is. */
-const PROMO_CODES: Record<
-  string,
-  { type: "percent" | "flat"; value: number; label: string }
-> = {
-  MED10: { type: "percent", value: 10, label: "10% off on item total" },
-  FLAT50: { type: "flat", value: 50, label: "₹50 off on your order" },
-};
+/**
+ * PROMO_CODES (hardcoded MED10/FLAT50/FREESHIP) removed entirely —
+ * promo validation now goes through the real backend endpoint
+ * (POST /api/coupons/validate), which checks an actual WooCommerce
+ * coupon's expiry, usage limit, min/max order amount, and product
+ * restrictions against the real cart, rather than a fixed client-side
+ * lookup table. See coupons.service.ts / coupons.service.js.
+ */
 
 /**
  * Matches the weight-based shipping rules configured in WooCommerce
@@ -154,11 +147,17 @@ const CartPage: React.FC = () => {
     null,
   );
 
-  // Promo state
+  // Promo state — appliedCoupon holds the backend's CONFIRMED result
+  // (discount type/amount as WooCommerce actually calculated it), not
+  // something recomputed client-side. Same "trust the server's
+  // confirmed state" principle used for addresses/cart throughout this
+  // app: the discount math (percent vs fixed_cart vs fixed_product,
+  // capped at cart total, etc.) lives in coupons.service.js, not here.
   const [promoOpen, setPromoOpen] = useState(false);
   const [promoInput, setPromoInput] = useState("");
-  const [promoCode, setPromoCode] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<CouponValidationResult | null>(null);
   const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
 
   const total = state.cartItems.reduce((s, i) => s + i.price * i.quantity, 0);
   const totalWeightKg = state.cartItems.reduce(
@@ -180,14 +179,8 @@ const CartPage: React.FC = () => {
   const meetsMinOrder = state.cartItems.length === 0 || total >= MIN_ORDER_VALUE;
   const amountToMinOrder = MIN_ORDER_VALUE - total;
 
-  const activePromo = promoCode ? PROMO_CODES[promoCode] : null;
-  const promoDiscount =
-    activePromo?.type === "percent"
-      ? Math.round((total * activePromo.value) / 100)
-      : activePromo?.type === "flat"
-      ? Math.min(activePromo.value, total)
-      : 0;
-  // Shipping is never discounted or waived — no promo type here
+  const promoDiscount = appliedCoupon?.discountAmount ?? 0;
+  // Shipping is never discounted or waived — no coupon type here
   // reduces it, matching "no free delivery" as a hard rule rather
   // than something a promo code could override.
   const finalTotal = total + delivery - promoDiscount;
@@ -223,23 +216,78 @@ const CartPage: React.FC = () => {
     };
   }, []);
 
-  const applyPromo = () => {
+  const applyPromo = async () => {
     const code = promoInput.trim().toUpperCase();
     if (!code) return;
-    if (!PROMO_CODES[code]) {
-      setPromoError("Invalid or expired promo code");
-      return;
-    }
-    setPromoCode(code);
+    setPromoLoading(true);
     setPromoError("");
-    setPromoOpen(false);
+    try {
+      const result = await couponsService.validate({
+        code,
+        cartTotal: total,
+        cartItems: state.cartItems.map((i) => ({
+          // Real Address/CartItem ids are WooCommerce product ids
+          // serialized as strings (see products.service.ts) — the
+          // backend's coupon validator expects real numbers to check
+          // against a coupon's product_ids/excluded_product_ids.
+          product_id: Number(i.id),
+          quantity: i.quantity,
+        })),
+      });
+      setAppliedCoupon(result);
+      setPromoOpen(false);
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || "Invalid or expired promo code";
+      setPromoError(message);
+    } finally {
+      setPromoLoading(false);
+    }
   };
 
   const removePromo = () => {
-    setPromoCode(null);
+    setAppliedCoupon(null);
     setPromoInput("");
     setPromoError("");
   };
+
+  // If the cart total changes while a coupon is applied (items added/
+  // removed elsewhere), silently re-check it against WooCommerce's real
+  // rules — a coupon that was valid a moment ago can stop being
+  // eligible (e.g. cart fell below the coupon's minimum spend). Without
+  // this, the UI would keep showing a discount the backend would
+  // actually reject at checkout.
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    let cancelled = false;
+    couponsService
+      .validate({
+        code: appliedCoupon.code,
+        cartTotal: total,
+        cartItems: state.cartItems.map((i) => ({
+          product_id: Number(i.id),
+          quantity: i.quantity,
+        })),
+      })
+      .then((result) => {
+        if (!cancelled) setAppliedCoupon(result);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setAppliedCoupon(null);
+        setPromoError(
+          err?.response?.data?.message ||
+            "Your promo code no longer applies to this cart and was removed.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Deliberately keyed on `total`, not the whole cartItems array —
+    // re-validating on every render would spam the backend; re-checking
+    // whenever the subtotal actually changes is the meaningful trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
 
   // Load the customer's persisted cart from the backend on mount, rather
   // than relying on whatever (session-only) state happened to already be
@@ -382,6 +430,7 @@ const CartPage: React.FC = () => {
     } catch (err) {
       console.error("Failed to clear cart after order", err);
     }
+    setAppliedCoupon(null);
     setPlacing(false);
   };
 
@@ -615,7 +664,7 @@ const CartPage: React.FC = () => {
               </div>
               <div className="bill-divider" />
               <div className="promo-section">
-                {!promoCode ? (
+                {!appliedCoupon ? (
                   <>
                     <button
                       className="promo-toggle"
@@ -645,9 +694,9 @@ const CartPage: React.FC = () => {
                           <button
                             className="promo-apply-btn"
                             onClick={applyPromo}
-                            disabled={!promoInput.trim()}
+                            disabled={!promoInput.trim() || promoLoading}
                           >
-                            Apply
+                            {promoLoading ? "Checking..." : "Apply"}
                           </button>
                         </div>
                         {promoError && (
@@ -664,8 +713,12 @@ const CartPage: React.FC = () => {
                         className="promo-applied-icon"
                       />
                       <div className="promo-applied-text">
-                        <strong>{promoCode} applied</strong>
-                        <span>{activePromo?.label}</span>
+                        <strong>{appliedCoupon.code} applied</strong>
+                        <span>
+                          {appliedCoupon.discountType === "percent"
+                            ? `You saved ₹${appliedCoupon.discountAmount.toLocaleString()}`
+                            : `₹${appliedCoupon.discountAmount.toLocaleString()} off`}
+                        </span>
                       </div>
                     </div>
                     <button className="promo-remove-btn" onClick={removePromo}>
@@ -674,9 +727,9 @@ const CartPage: React.FC = () => {
                   </div>
                 )}
               </div>
-              {promoCode && promoDiscount > 0 && (
+              {appliedCoupon && promoDiscount > 0 && (
                 <div className="bill-row savings">
-                  <span>Promo ({promoCode})</span>
+                  <span>Promo ({appliedCoupon.code})</span>
                   <span>−₹{promoDiscount.toLocaleString()}</span>
                 </div>
               )}
