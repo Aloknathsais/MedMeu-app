@@ -4,12 +4,13 @@ import {
   IonButton, IonIcon, IonBadge, IonToast, IonSpinner,
 } from '@ionic/react';
 import {
-  heartOutline, heart, cartOutline, starSharp, shareSocialOutline,
+  heartOutline, heart, cartOutline, starSharp, starOutline, shareSocialOutline,
   shieldCheckmarkOutline, refreshOutline, carOutline,
 } from 'ionicons/icons';
 import { useParams, useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { productsService, UiProduct } from '../../services/products.service';
+import { reviewsService, ProductReview } from '../../services/reviews.service';
 import './Products.css';
 
 const ProductDetailPage: React.FC = () => {
@@ -25,6 +26,19 @@ const ProductDetailPage: React.FC = () => {
   const [product, setProduct] = useState<UiProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+
+  // Reviews — separate loading state from the product itself, since a
+  // reviews fetch failure shouldn't block the rest of the page.
+  const [reviews, setReviews] = useState<ProductReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [reviewsError, setReviewsError] = useState('');
+
+  // Write-a-review form state
+  const [newRating, setNewRating] = useState(0);
+  const [newReviewText, setNewReviewText] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewFormError, setReviewFormError] = useState('');
+  const [reviewJustSubmitted, setReviewJustSubmitted] = useState(false);
 
   // Swipe tracking
   const touchStartX = useRef<number>(0);
@@ -46,6 +60,55 @@ const ProductDetailPage: React.FC = () => {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReviewsLoading(true);
+    setReviewsError('');
+    // Reset the write-review form when navigating to a different product
+    setNewRating(0);
+    setNewReviewText('');
+    setReviewJustSubmitted(false);
+    reviewsService.list(id)
+      .then(list => { if (!cancelled) setReviews(list); })
+      .catch(err => {
+        console.error('Failed to load reviews', err);
+        if (!cancelled) setReviewsError('Could not load reviews right now.');
+      })
+      .finally(() => { if (!cancelled) setReviewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  const submitReview = async () => {
+    if (newRating < 1) {
+      setReviewFormError('Please select a star rating');
+      return;
+    }
+    if (!newReviewText.trim()) {
+      setReviewFormError('Please write a few words about the product');
+      return;
+    }
+    setSubmittingReview(true);
+    setReviewFormError('');
+    try {
+      await reviewsService.submit(id, { rating: newRating, review: newReviewText.trim() });
+      // Not appending the returned review to the visible list — new
+      // reviews commonly land in moderation (WordPress comment
+      // approval) before they're public, so showing it immediately
+      // here would be showing something other customers can't
+      // actually see yet. A clear "submitted" state is more honest
+      // than a fake-looking instant appearance.
+      setReviewJustSubmitted(true);
+      setNewRating(0);
+      setNewReviewText('');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || 'Could not submit your review — please try again.';
+      setReviewFormError(message);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -322,7 +385,114 @@ const ProductDetailPage: React.FC = () => {
                 </div>
                 <p className="review-count-text">{product.reviews.toLocaleString()} ratings</p>
               </div>
-              <p className="review-placeholder">Customer reviews will appear here once submitted.</p>
+
+              {/* ── Write a review ── */}
+              <div className="write-review-card">
+                <h4 className="write-review-title">Write a review</h4>
+                {reviewJustSubmitted ? (
+                  <p className="review-submitted-msg">
+                    Thanks! Your review has been submitted and will appear here
+                    once it's approved.
+                  </p>
+                ) : (
+                  <>
+                    <div className="review-rating-picker">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <button
+                          key={n}
+                          className="review-star-btn"
+                          onClick={() => {
+                            setNewRating(n);
+                            setReviewFormError('');
+                          }}
+                          aria-label={`Rate ${n} star${n > 1 ? 's' : ''}`}
+                        >
+                          <IonIcon
+                            icon={n <= newRating ? starSharp : starOutline}
+                            color={n <= newRating ? 'warning' : 'medium'}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      className="review-textarea"
+                      placeholder="Share your experience with this product..."
+                      value={newReviewText}
+                      onChange={(e) => {
+                        setNewReviewText(e.target.value);
+                        setReviewFormError('');
+                      }}
+                      rows={3}
+                      maxLength={2000}
+                    />
+                    {reviewFormError && (
+                      <p className="review-form-error">{reviewFormError}</p>
+                    )}
+                    <IonButton
+                      expand="block"
+                      className="review-submit-btn"
+                      onClick={submitReview}
+                      disabled={submittingReview}
+                    >
+                      {submittingReview ? 'Submitting...' : 'Submit Review'}
+                    </IonButton>
+                  </>
+                )}
+              </div>
+
+              {/* ── Existing reviews ── */}
+              <div className="review-list">
+                {reviewsLoading ? (
+                  <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                    <IonSpinner name="crescent" />
+                  </div>
+                ) : reviewsError ? (
+                  <p className="review-placeholder" style={{ color: '#C62828' }}>
+                    {reviewsError}
+                  </p>
+                ) : reviews.length === 0 ? (
+                  <p className="review-placeholder">
+                    No reviews yet — be the first to review this product.
+                  </p>
+                ) : (
+                  reviews.map((r) => (
+                    <div key={r.id} className="review-item">
+                      <div className="review-item-header">
+                        {r.avatarUrl && (
+                          <img
+                            src={r.avatarUrl}
+                            alt=""
+                            className="review-item-avatar"
+                          />
+                        )}
+                        <div className="review-item-header-text">
+                          <div className="review-item-top">
+                            <span className="review-item-name">{r.reviewer}</span>
+                            {r.verified && (
+                              <span className="review-verified-badge">
+                                Verified Purchase
+                              </span>
+                            )}
+                          </div>
+                          <div className="review-stars-row">
+                            {[1, 2, 3, 4, 5].map(n => (
+                              <IonIcon
+                                key={n}
+                                icon={starSharp}
+                                color={n <= r.rating ? 'warning' : 'medium'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <p className="review-item-text">{r.reviewText}</p>
+                      <p className="review-item-date">
+                        {new Date(r.dateCreated).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
         </div>
