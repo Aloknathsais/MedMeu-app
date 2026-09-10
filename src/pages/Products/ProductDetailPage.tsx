@@ -11,6 +11,11 @@ import { useParams, useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { productsService, UiProduct } from '../../services/products.service';
 import { reviewsService, ProductReview } from '../../services/reviews.service';
+import {
+  QUANTITY_PRICING_TIERS,
+  getActiveTier,
+  getTierUnitPrice,
+} from '../../utils/quantityPricing';
 import './Products.css';
 
 const ProductDetailPage: React.FC = () => {
@@ -146,6 +151,7 @@ const ProductDetailPage: React.FC = () => {
   const inWishlist = state.wishlist.includes(product.id);
   const images = product.images; // real gallery from WooCommerce — no more 3x duplicate placeholder
   const maxQty = product.stockQuantity ?? 99;
+  const activeTier = getActiveTier(qty);
 
   const goToSlide = (index: number) => {
     setActiveImg(index);
@@ -308,6 +314,33 @@ const ProductDetailPage: React.FC = () => {
               <span>{product.rating}</span>
             </div>
             <span className="detail-reviews">{product.reviews.toLocaleString()} ratings</span>
+          </div>
+
+          <div className="tier-pricing-card">
+            {QUANTITY_PRICING_TIERS.map((tier) => {
+              const tierPrice = getTierUnitPrice(product.price, tier.discountPercent);
+              const isActive = activeTier.minQty === tier.minQty;
+              return (
+                <button
+                  key={tier.minQty}
+                  className={`tier-pricing-row ${isActive ? 'active' : ''}`}
+                  onClick={() => setQty(Math.min(maxQty, tier.minQty))}
+                >
+                  <span className="tier-pricing-radio">
+                    <span className={`tier-pricing-radio-dot ${isActive ? 'active' : ''}`} />
+                  </span>
+                  <span className="tier-pricing-label">{tier.label}</span>
+                  <span className="tier-pricing-price">
+                    {tier.discountPercent > 0 && (
+                      <span className="tier-pricing-price-original">
+                        ₹{product.price}
+                      </span>
+                    )}
+                    ₹{tierPrice}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="detail-price-card">
