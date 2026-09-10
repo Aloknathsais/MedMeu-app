@@ -15,6 +15,22 @@ export interface CartItem {
    * revenue is a real business cost.
    */
   weight?: number;
+  /**
+   * Pre-discount list price for this product, for strikethrough
+   * display. Only meaningfully different from `price` when a
+   * cart-level discount (tiered pricing, bulk discount, etc.) actually
+   * applied to this line — see medmeu-app-cart-api.php's
+   * medmeu_app_serialize_cart() for where this comes from.
+   */
+  originalPrice?: number;
+  /**
+   * The exact, already-discounted total for this line, straight from
+   * WooCommerce's own $item['line_total'] — use this for the row
+   * subtotal display instead of `price * quantity` when present, to
+   * avoid float rounding drift between the per-unit price and the
+   * real line total.
+   */
+  lineTotal?: number;
 }
 export interface User {
   id: string; name: string; email: string; phone: string; avatar?: string;

@@ -165,8 +165,15 @@ const CartPage: React.FC = () => {
     0,
   );
   const delivery = calculateShippingCost(totalWeightKg, state.cartItems.length > 0);
+  // Real savings from tiered/dynamic pricing (originalPrice vs the
+  // actual discounted price WooCommerce applied) — was previously a
+  // fake flat 10% of the cart, unrelated to any real pricing data.
+  // Note this was never actually subtracted from finalTotal even as
+  // the fake version — it's a decorative "you saved" line, not part
+  // of the real bill math (promoDiscount is the one that affects
+  // finalTotal).
   const savings = state.cartItems.reduce(
-    (s, i) => s + i.price * 0.1 * i.quantity,
+    (s, i) => s + Math.max(0, (i.originalPrice ?? i.price) - i.price) * i.quantity,
     0,
   );
 
@@ -524,7 +531,15 @@ const CartPage: React.FC = () => {
                         </button>
                       </div>
                       <span className="cart-item-price">
-                        ₹{(item.price * item.quantity).toLocaleString()}
+                        {item.originalPrice != null &&
+                          item.originalPrice > item.price && (
+                            <span className="cart-item-price-original">
+                              ₹
+                              {(item.originalPrice * item.quantity).toLocaleString()}
+                            </span>
+                          )}
+                        ₹
+                        {(item.lineTotal ?? item.price * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -654,10 +669,12 @@ const CartPage: React.FC = () => {
                 <span>Item Total ({state.cartCount} items)</span>
                 <span>₹{total.toLocaleString()}</span>
               </div>
-              <div className="bill-row savings">
-                <span>Discount</span>
-                <span>−₹{Math.round(savings)}</span>
-              </div>
+              {savings > 0 && (
+                <div className="bill-row savings">
+                  <span>Discount</span>
+                  <span>−₹{Math.round(savings)}</span>
+                </div>
+              )}
               <div className="bill-row">
                 <span>Delivery Fee</span>
                 <span>₹{delivery}</span>
