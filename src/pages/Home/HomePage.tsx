@@ -18,6 +18,7 @@ import { mockBanners, mockTestimonials, mockTrustBadges } from '../../utils/mock
 import { productsService, UiProduct } from '../../services/products.service';
 import { categoriesService, UiCategory } from '../../services/categories.service';
 import { authService } from '../../services/auth.service';
+import { reviewsService, GoogleReview } from '../../services/reviews.service';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -34,6 +35,13 @@ const HomePage: React.FC = () => {
   const [deals, setDeals] = useState<UiProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // Real Google reviews — falls back to mockTestimonials if the fetch
+  // fails or the backend hasn't returned anything yet, so the section
+  // is never empty.
+  const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
+  const [googleRating, setGoogleRating] = useState<number | null>(null);
+  const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(null);
 
   // Backend-search results shown while the search bar is open.
   const [searchResults, setSearchResults] = useState<UiProduct[]>([]);
@@ -72,6 +80,25 @@ const HomePage: React.FC = () => {
         if (!cancelled) setLoading(false);
       }
     })();
+    return () => { cancelled = true; };
+  }, []);
+
+  /* ── Load real Google reviews — separate from the main dashboard
+     load above so a slow/failed reviews call never blocks categories
+     or products from rendering. ── */
+  useEffect(() => {
+    let cancelled = false;
+    reviewsService.getGoogleReviews(8)
+      .then(({ reviews, rating, reviewCount }) => {
+        if (cancelled) return;
+        setGoogleReviews(reviews);
+        setGoogleRating(rating);
+        setGoogleReviewCount(reviewCount);
+      })
+      .catch(err => {
+        console.error('Failed to load Google reviews', err);
+        // Silent fail — mockTestimonials fallback covers this in the render.
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -387,13 +414,20 @@ const HomePage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Testimonials — still mock, no backend source for these ── */}
+            {/* ── Testimonials (real Google reviews, falls back to mock) ── */}
             <div className="section-header">
               <h2>What Our Customers Say About Us</h2>
+              {googleRating && (
+                <span className="google-rating-pill">
+                  <IonIcon icon={starSharp} color="warning" />
+                  {googleRating.toFixed(1)}
+                  {googleReviewCount ? ` · ${googleReviewCount} reviews` : ''}
+                </span>
+              )}
             </div>
             <div className="testimonial-slider">
-              {mockTestimonials.map((t, i) => (
-                <TestimonialCard key={i} testimonial={t} />
+              {(googleReviews.length > 0 ? googleReviews : mockTestimonials).map((t, i) => (
+                <TestimonialCard key={`${t.name}-${i}`} testimonial={t} isGoogle={googleReviews.length > 0} />
               ))}
             </div>
 
@@ -527,10 +561,14 @@ const ProductCard: React.FC<{
   </div>
 );
 
-/* ── Testimonial card with "Read more" expand ── */
+/* ── Testimonial card with "Read more" expand ──
+   Renders either a mock testimonial ({name, time, text}) or a real
+   Google review ({name, time, text, rating, avatar}) — rating/avatar
+   are simply absent on the mock shape, so the extras just don't render. */
 const TestimonialCard: React.FC<{
-  testimonial: { name: string; time: string; text: string };
-}> = ({ testimonial }) => {
+  testimonial: { name: string; time: string; text: string; rating?: number; avatar?: string };
+  isGoogle?: boolean;
+}> = ({ testimonial, isGoogle }) => {
   const [expanded, setExpanded] = useState(false);
   const isLong = testimonial.text.length > 160;
   const displayText =
@@ -538,7 +576,21 @@ const TestimonialCard: React.FC<{
 
   return (
     <div className="testimonial-card">
-      <div className="testimonial-quote">"</div>
+      <div className="testimonial-top">
+        <div className="testimonial-quote">"</div>
+        {isGoogle && <span className="google-badge">G</span>}
+      </div>
+      {typeof testimonial.rating === 'number' && (
+        <div className="testimonial-stars">
+          {[1, 2, 3, 4, 5].map(n => (
+            <IonIcon
+              key={n}
+              icon={starSharp}
+              color={n <= testimonial.rating! ? 'warning' : 'medium'}
+            />
+          ))}
+        </div>
+      )}
       <p className="testimonial-text">
         {displayText}
         {isLong && (
@@ -548,7 +600,11 @@ const TestimonialCard: React.FC<{
         )}
       </p>
       <div className="testimonial-author">
-        <div className="author-avatar">{testimonial.name.charAt(0)}</div>
+        {testimonial.avatar ? (
+          <img className="author-avatar author-avatar-img" src={testimonial.avatar} alt={testimonial.name} />
+        ) : (
+          <div className="author-avatar">{testimonial.name.charAt(0)}</div>
+        )}
         <div>
           <p className="author-name">{testimonial.name}</p>
           <p className="author-time">{testimonial.time}</p>
