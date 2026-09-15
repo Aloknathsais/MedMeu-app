@@ -10,15 +10,16 @@ import {
   logoWhatsapp,
   logoInstagram,
   logoFacebook,
+  logoGoogle,
   shieldCheckmarkOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockBanners, mockTestimonials, mockTrustBadges } from '../../utils/mockData';
+import { mockBanners, mockTrustBadges } from '../../utils/mockData';
 import { productsService, UiProduct } from '../../services/products.service';
 import { categoriesService, UiCategory } from '../../services/categories.service';
 import { authService } from '../../services/auth.service';
-import { reviewsService, GoogleReview } from '../../services/reviews.service';
+import { googleReviewsService, GoogleReview } from '../../services/googleReviews.service';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -36,16 +37,15 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  // Real Google reviews — falls back to mockTestimonials if the fetch
-  // fails or the backend hasn't returned anything yet, so the section
-  // is never empty.
-  const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
-  const [googleRating, setGoogleRating] = useState<number | null>(null);
-  const [googleReviewCount, setGoogleReviewCount] = useState<number | null>(null);
-
   // Backend-search results shown while the search bar is open.
   const [searchResults, setSearchResults] = useState<UiProduct[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Real Google reviews — replaces mockTestimonials. Separate
+  // loading/error state so a failed fetch here never blocks the rest
+  // of the home page from rendering.
+  const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
+  const [googleReviewsLoading, setGoogleReviewsLoading] = useState(true);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const bannerScrollRef = useRef<HTMLDivElement>(null);
@@ -57,6 +57,26 @@ const HomePage: React.FC = () => {
       setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [searchOpen]);
+
+  /* ── Load real Google reviews (via our own backend, not Trustindex — see googleReviews.service.js) ── */
+  useEffect(() => {
+    let cancelled = false;
+    googleReviewsService
+      .get()
+      .then((data) => {
+        if (!cancelled) setGoogleReviews(data.reviews);
+      })
+      .catch((err) => {
+        console.error('Failed to load Google reviews', err);
+        // No error state shown to the user — this is a marketing
+        // widget, not core functionality, so failing silently (just
+        // not showing the section) is better than an error banner.
+      })
+      .finally(() => {
+        if (!cancelled) setGoogleReviewsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   /* ── Load real dashboard data: categories + home products + on-sale deals ── */
   useEffect(() => {
@@ -80,25 +100,6 @@ const HomePage: React.FC = () => {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
-  }, []);
-
-  /* ── Load real Google reviews — separate from the main dashboard
-     load above so a slow/failed reviews call never blocks categories
-     or products from rendering. ── */
-  useEffect(() => {
-    let cancelled = false;
-    reviewsService.getGoogleReviews(8)
-      .then(({ reviews, rating, reviewCount }) => {
-        if (cancelled) return;
-        setGoogleReviews(reviews);
-        setGoogleRating(rating);
-        setGoogleReviewCount(reviewCount);
-      })
-      .catch(err => {
-        console.error('Failed to load Google reviews', err);
-        // Silent fail — mockTestimonials fallback covers this in the render.
-      });
     return () => { cancelled = true; };
   }, []);
 
@@ -414,22 +415,19 @@ const HomePage: React.FC = () => {
               </div>
             )}
 
-            {/* ── Testimonials (real Google reviews, falls back to mock) ── */}
-            <div className="section-header">
-              <h2>What Our Customers Say About Us</h2>
-              {googleRating && (
-                <span className="google-rating-pill">
-                  <IonIcon icon={starSharp} color="warning" />
-                  {googleRating.toFixed(1)}
-                  {googleReviewCount ? ` · ${googleReviewCount} reviews` : ''}
-                </span>
-              )}
-            </div>
-            <div className="testimonial-slider">
-              {(googleReviews.length > 0 ? googleReviews : mockTestimonials).map((t, i) => (
-                <TestimonialCard key={`${t.name}-${i}`} testimonial={t} isGoogle={googleReviews.length > 0} />
-              ))}
-            </div>
+            {/* ── Real Google Reviews (via our own backend → Google Places API directly, not Trustindex — see googleReviews.service.js for why) ── */}
+            {!googleReviewsLoading && googleReviews.length > 0 && (
+              <>
+                <div className="section-header">
+                  <h2>What Our Customers Say About Us</h2>
+                </div>
+                <div className="testimonial-slider">
+                  {googleReviews.map((r, i) => (
+                    <GoogleReviewCard key={i} review={r} />
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* ── Trust Badges — still mock, static marketing copy ── */}
             <div className="trust-strip">
@@ -561,36 +559,25 @@ const ProductCard: React.FC<{
   </div>
 );
 
-/* ── Testimonial card with "Read more" expand ──
-   Renders either a mock testimonial ({name, time, text}) or a real
-   Google review ({name, time, text, rating, avatar}) — rating/avatar
-   are simply absent on the mock shape, so the extras just don't render. */
-const TestimonialCard: React.FC<{
-  testimonial: { name: string; time: string; text: string; rating?: number; avatar?: string };
-  isGoogle?: boolean;
-}> = ({ testimonial, isGoogle }) => {
+/* ── Google review card with "Read more" expand ── */
+const GoogleReviewCard: React.FC<{ review: GoogleReview }> = ({ review }) => {
   const [expanded, setExpanded] = useState(false);
-  const isLong = testimonial.text.length > 160;
+  const isLong = review.text.length > 160;
   const displayText =
-    expanded || !isLong ? testimonial.text : testimonial.text.slice(0, 160) + '...';
+    expanded || !isLong ? review.text : review.text.slice(0, 160) + '...';
 
   return (
     <div className="testimonial-card">
-      <div className="testimonial-top">
-        <div className="testimonial-quote">"</div>
-        {isGoogle && <span className="google-badge">G</span>}
+      <div className="testimonial-quote">"</div>
+      <div className="testimonial-stars">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <IonIcon
+            key={n}
+            icon={starSharp}
+            color={n <= review.rating ? 'warning' : 'medium'}
+          />
+        ))}
       </div>
-      {typeof testimonial.rating === 'number' && (
-        <div className="testimonial-stars">
-          {[1, 2, 3, 4, 5].map(n => (
-            <IonIcon
-              key={n}
-              icon={starSharp}
-              color={n <= testimonial.rating! ? 'warning' : 'medium'}
-            />
-          ))}
-        </div>
-      )}
       <p className="testimonial-text">
         {displayText}
         {isLong && (
@@ -600,15 +587,16 @@ const TestimonialCard: React.FC<{
         )}
       </p>
       <div className="testimonial-author">
-        {testimonial.avatar ? (
-          <img className="author-avatar author-avatar-img" src={testimonial.avatar} alt={testimonial.name} />
+        {review.authorPhotoUrl ? (
+          <img src={review.authorPhotoUrl} alt="" className="author-avatar-img" />
         ) : (
-          <div className="author-avatar">{testimonial.name.charAt(0)}</div>
+          <div className="author-avatar">{review.authorName.charAt(0)}</div>
         )}
         <div>
-          <p className="author-name">{testimonial.name}</p>
-          <p className="author-time">{testimonial.time}</p>
+          <p className="author-name">{review.authorName}</p>
+          <p className="author-time">{review.relativeTime}</p>
         </div>
+        <IonIcon icon={logoGoogle} className="google-review-badge" />
       </div>
     </div>
   );
