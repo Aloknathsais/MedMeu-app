@@ -346,7 +346,13 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.author-avatar-img { object-fit: cover; }
+.author-avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
 .author-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin: 0; }
 .author-time { font-size: 11px; color: #999; margin: 1px 0 0; }
 
@@ -459,7 +465,6 @@
 
 .footer-logo-watermark {
   width: 90%;
-  /* max-width: 200px; */
   margin: 0 auto ;
   opacity: 0.92;
   filter: drop-shadow(0 4px 14px rgba(0,0,0,0.15));
@@ -539,7 +544,6 @@
 }
 .deal-card:active { transform: scale(0.97); }
 
-/* ── Colored header block (kept short, so it reads as an accent, not a mini-banner) ── */
 .deal-card-header {
   position: relative;
   padding: 14px 16px 20px;
@@ -614,7 +618,6 @@
   max-width: 90%;
 }
 
-/* ── Perforated ticket divider between header and body ── */
 .deal-ticket-divider {
   position: relative;
   height: 0;
@@ -639,7 +642,6 @@
   z-index: 2;
 }
 
-/* ── White body: title stays behind in header, everything else here reads as neutral/premium ── */
 .deal-card-body {
   padding: 16px 16px 16px;
   display: flex;
@@ -657,7 +659,6 @@
 .deal-price { font-size: 18px; font-weight: 900; color: #1a1a2e; }
 .deal-original { font-size: 11px; color: #bbb; text-decoration: line-through; }
 
-/* Countdown timer — light neutral pill, no longer glassy-on-color */
 .deal-timer {
   display: flex;
   align-items: center;

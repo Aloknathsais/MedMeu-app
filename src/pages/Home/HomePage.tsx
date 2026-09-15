@@ -15,11 +15,12 @@ import {
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { mockBanners, mockTrustBadges } from '../../utils/mockData';
+import { mockTrustBadges } from '../../utils/mockData';
 import { productsService, UiProduct } from '../../services/products.service';
 import { categoriesService, UiCategory } from '../../services/categories.service';
 import { authService } from '../../services/auth.service';
 import { googleReviewsService, GoogleReview } from '../../services/googleReviews.service';
+import { bannersService, Banner } from '../../services/banners.service';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
@@ -46,6 +47,11 @@ const HomePage: React.FC = () => {
   // of the home page from rendering.
   const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
   const [googleReviewsLoading, setGoogleReviewsLoading] = useState(true);
+
+  // Real banners — replaces mockBanners. Node-managed (see
+  // banners.config.js on the backend) since WooCommerce has no native
+  // concept of homepage banners at all.
+  const [banners, setBanners] = useState<Banner[]>([]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const bannerScrollRef = useRef<HTMLDivElement>(null);
@@ -83,15 +89,20 @@ const HomePage: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const [cats, feat, sale] = await Promise.all([
+        const [cats, feat, sale, bannerList] = await Promise.all([
           categoriesService.list(),
           productsService.getHomeProducts(8),
           productsService.getOnSale(6),
+          bannersService.list().catch((err) => {
+            console.error('Failed to load banners', err);
+            return []; // isolated — a banners outage shouldn't block/error the rest of the home page
+          }),
         ]);
         if (cancelled) return;
         setCategories(cats);
         setProducts(feat);
         setDeals(sale);
+        setBanners(bannerList);
         setLoadError(false);
       } catch (err) {
         console.error('Failed to load dashboard data', err);
@@ -141,18 +152,18 @@ const HomePage: React.FC = () => {
 
   /* Auto-scroll banner every 4s, resets when activeBanner changes */
   useEffect(() => {
-    if (loading) return;
+    if (loading || banners.length === 0) return;
     autoScrollRef.current = setInterval(() => {
       const el = bannerScrollRef.current;
       if (!el) return;
-      const next = (activeBanner + 1) % mockBanners.length;
+      const next = (activeBanner + 1) % banners.length;
       el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' });
       setActiveBanner(next);
     }, 4000);
     return () => {
       if (autoScrollRef.current) clearInterval(autoScrollRef.current);
     };
-  }, [loading, activeBanner]);
+  }, [loading, activeBanner, banners.length]);
 
   const [cartToastMsg, setCartToastMsg] = useState('');
   const [showCartToast, setShowCartToast] = useState(false);
@@ -186,16 +197,29 @@ const HomePage: React.FC = () => {
 
   const toggleWishlist = (id: string) => dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
 
+  const goToBannerLink = (link: string) => {
+    if (/^https?:\/\//i.test(link)) {
+      window.open(link, '_blank');
+    } else {
+      history.push(link);
+    }
+  };
+
   const handleRefresh = async (e: any) => {
     try {
-      const [cats, feat, sale] = await Promise.all([
+      const [cats, feat, sale, bannerList] = await Promise.all([
         categoriesService.list(),
         productsService.getHomeProducts(8),
         productsService.getOnSale(6),
+        bannersService.list().catch((err) => {
+          console.error('Failed to refresh banners', err);
+          return [];
+        }),
       ]);
       setCategories(cats);
       setProducts(feat);
       setDeals(sale);
+      setBanners(bannerList);
       setLoadError(false);
     } catch (err) {
       console.error('Refresh failed', err);
@@ -302,12 +326,13 @@ const HomePage: React.FC = () => {
         ) : (
           <>
             {/* ── Offer Banner Carousel ──
-                Still mock: banners are marketing content (image + copy +
-                CTA), not catalog data — WooCommerce has nothing that maps
-                to this. Would need a simple CMS/custom endpoint later. */}
+                Real, Node-managed content now (see banners.config.js on
+                the backend) — WooCommerce has no native concept of
+                banners at all, so this is pure marketing content served
+                from our own backend, not WooCommerce/WordPress. */}
             {loading ? (
               <BannerSkeleton />
-            ) : (
+            ) : banners.length > 0 ? (
               <div className="banner-section">
                 <div
                   className="banner-slider"
@@ -316,13 +341,13 @@ const HomePage: React.FC = () => {
                   onTouchStart={pauseAutoScroll}
                   onMouseDown={pauseAutoScroll}
                 >
-                  {mockBanners.map(b => (
+                  {banners.map(b => (
                     <div key={b.id} className="banner-card" style={{ background: b.bg }}>
                       <span className="banner-badge">{b.badge}</span>
                       <div className="banner-text">
                         <h3>{b.title}</h3>
                         <p>{b.subtitle}</p>
-                        <button className="banner-cta">
+                        <button className="banner-cta" onClick={() => goToBannerLink(b.link)}>
                           {b.cta} <IonIcon icon={arrowForward} />
                         </button>
                       </div>
@@ -331,12 +356,12 @@ const HomePage: React.FC = () => {
                   ))}
                 </div>
                 <div className="banner-dots">
-                  {mockBanners.map((_, i) => (
+                  {banners.map((_, i) => (
                     <span key={i} className={`banner-dot ${i === activeBanner ? 'active' : ''}`} />
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* ── Categories (real) ── */}
             <div className="section-header">
@@ -568,7 +593,10 @@ const GoogleReviewCard: React.FC<{ review: GoogleReview }> = ({ review }) => {
 
   return (
     <div className="testimonial-card">
-      <div className="testimonial-quote">"</div>
+      <div className="testimonial-top">
+        <div className="testimonial-quote">"</div>
+        <IonIcon icon={logoGoogle} className="google-badge" />
+      </div>
       <div className="testimonial-stars">
         {[1, 2, 3, 4, 5].map((n) => (
           <IonIcon
@@ -596,7 +624,6 @@ const GoogleReviewCard: React.FC<{ review: GoogleReview }> = ({ review }) => {
           <p className="author-name">{review.authorName}</p>
           <p className="author-time">{review.relativeTime}</p>
         </div>
-        <IonIcon icon={logoGoogle} className="google-review-badge" />
       </div>
     </div>
   );
