@@ -26,7 +26,7 @@ import './Home.css';
 
 const HomePage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch, addToCart: persistAddToCart } = useApp();
+  const { state, dispatch, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
@@ -63,6 +63,14 @@ const HomePage: React.FC = () => {
       setTimeout(() => searchInputRef.current?.focus(), 150);
     }
   }, [searchOpen]);
+
+  /* ── Load the real wishlist (works for guests too — see wishlist.service.ts) ── */
+  useEffect(() => {
+    loadWishlist().catch((err) => {
+      console.error('Failed to load wishlist', err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── Load real Google reviews (via our own backend, not Trustindex — see googleReviews.service.js) ── */
   useEffect(() => {
@@ -195,7 +203,11 @@ const HomePage: React.FC = () => {
       });
   };
 
-  const toggleWishlist = (id: string) => dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
+  const toggleWishlist = (id: string) => {
+    persistToggleWishlist(id).catch((err) => {
+      console.error('Failed to update wishlist', err);
+    });
+  };
 
   const goToBannerLink = (link: string) => {
     if (/^https?:\/\//i.test(link)) {

@@ -21,7 +21,7 @@ import './Products.css';
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
-  const { state, dispatch, addToCart: persistAddToCart } = useApp();
+  const { state, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
   const [qty, setQty] = useState(1);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -49,6 +49,14 @@ const ProductDetailPage: React.FC = () => {
   const touchStartX = useRef<number>(0);
   const touchEndX = useRef<number>(0);
   const sliderRef = useRef<HTMLDivElement>(null);
+
+  /* ── Load the real wishlist (works for guests too — see wishlist.service.ts) ── */
+  useEffect(() => {
+    loadWishlist().catch((err) => {
+      console.error('Failed to load wishlist', err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +232,7 @@ const ProductDetailPage: React.FC = () => {
           <IonButtons slot="start"><IonBackButton color="dark" /></IonButtons>
           <IonButtons slot="end">
             <IonButton><IonIcon icon={shareSocialOutline} color="dark" /></IonButton>
-            <IonButton onClick={() => dispatch({ type: 'TOGGLE_WISHLIST', payload: product.id })}>
+            <IonButton onClick={() => persistToggleWishlist(product.id).catch((err) => console.error('Failed to update wishlist', err))}>
               <IonIcon icon={inWishlist ? heart : heartOutline} color={inWishlist ? 'danger' : 'dark'} />
             </IonButton>
             <IonButton onClick={() => history.push('/tabs/cart')}>

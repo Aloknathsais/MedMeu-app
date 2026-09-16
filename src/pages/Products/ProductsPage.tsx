@@ -34,7 +34,7 @@ const PER_PAGE = 20;
 const ProductsPage: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const { state, dispatch, addToCart: persistAddToCart } = useApp();
+  const { state, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('popular');
@@ -76,6 +76,14 @@ const ProductsPage: React.FC = () => {
       .catch(err => console.error('Failed to load categories', err));
   }, []);
 
+  /* ── Load the real wishlist (works for guests too — see wishlist.service.ts) ── */
+  useEffect(() => {
+    loadWishlist().catch((err) => {
+      console.error('Failed to load wishlist', err);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [cartToastMsg, setCartToastMsg] = useState('');
   const [showCartToast, setShowCartToast] = useState(false);
 
@@ -99,7 +107,9 @@ const ProductsPage: React.FC = () => {
 
   const toggleWishlist = (id: string, e: any) => {
     e.stopPropagation();
-    dispatch({ type: 'TOGGLE_WISHLIST', payload: id });
+    persistToggleWishlist(id).catch((err) => {
+      console.error('Failed to update wishlist', err);
+    });
   };
 
   const resetFilters = () => {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { cartService } from '../services/cart.service';
+import { wishlistService } from '../services/wishlist.service';
 
 export interface CartItem {
   id: string; name: string; price: number; image: string; quantity: number; unit: string;
@@ -61,7 +62,8 @@ type Action =
   | { type: 'UPDATE_CART_QTY'; payload: { id: string; quantity: number } }
   | { type: 'SET_CART'; payload: CartItem[] }
   | { type: 'CLEAR_CART' }
-  | { type: 'TOGGLE_WISHLIST'; payload: string };
+  | { type: 'TOGGLE_WISHLIST'; payload: string }
+  | { type: 'SET_WISHLIST'; payload: string[] };
 
 /**
  * Was: user always started as `null`, even when isAuthenticated was
@@ -122,11 +124,20 @@ function reducer(state: AppState, action: Action): AppState {
     }
     case 'CLEAR_CART': return { ...state, cartItems: [], cartCount: 0 };
     case 'TOGGLE_WISHLIST': {
+      // Kept for compatibility, but no longer the recommended path —
+      // see toggleWishlist() below, which persists to the real KLB
+      // Wishlist (via the WordPress wrapper plugin) and dispatches
+      // SET_WISHLIST with the server-confirmed list instead of this
+      // local-only optimistic toggle.
       const wl = state.wishlist.includes(action.payload)
         ? state.wishlist.filter(id => id !== action.payload)
         : [...state.wishlist, action.payload];
       return { ...state, wishlist: wl };
     }
+    // Replaces the wishlist id list wholesale with whatever the
+    // WordPress-side KLB Wishlist actually confirmed — same "trust the
+    // server's confirmed state" principle as SET_CART.
+    case 'SET_WISHLIST': return { ...state, wishlist: action.payload };
     default: return state;
   }
 }
@@ -144,6 +155,10 @@ interface AppContextValue {
   updateCartQty: (id: string, quantity: number) => Promise<void>;
   /** Clears the whole cart via the backend, then syncs local state. */
   clearCart: () => Promise<void>;
+  /** Fetches the real wishlist (KLB Wishlist, via the WordPress wrapper) and syncs local state to it. Works for both logged-in customers and guests — see wishlist.service.ts. Call once on app mount. */
+  loadWishlist: () => Promise<void>;
+  /** Adds or removes a product from the wishlist depending on its current state, then syncs local state to the server-confirmed result. */
+  toggleWishlist: (productId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -184,8 +199,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_CART', payload: items });
   }
 
+  async function loadWishlist() {
+    const { items } = await wishlistService.list();
+    dispatch({ type: 'SET_WISHLIST', payload: items.map(i => i.id) });
+  }
+
+  async function toggleWishlist(productId: string) {
+    const isWishlisted = state.wishlist.includes(productId);
+    const { items } = isWishlisted
+      ? await wishlistService.remove(productId)
+      : await wishlistService.add(productId);
+    dispatch({ type: 'SET_WISHLIST', payload: items.map(i => i.id) });
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch, loadCart, addToCart, removeFromCart, updateCartQty, clearCart }}>
+    <AppContext.Provider value={{ state, dispatch, loadCart, addToCart, removeFromCart, updateCartQty, clearCart, loadWishlist, toggleWishlist }}>
       {children}
     </AppContext.Provider>
   );
