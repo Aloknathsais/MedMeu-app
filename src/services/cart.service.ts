@@ -38,4 +38,28 @@ export const cartService = {
     await api.delete('/cart');
     return cartService.list();
   },
+
+  /**
+   * Converts the real cart into a real WooCommerce order. Throws on
+   * failure — including a real server-side rejection (below minimum
+   * order value, an item that just went out of stock, an invalid
+   * address) — the caller is expected to surface
+   * err.response?.data?.message, same pattern used everywhere else.
+   * Does NOT clear local cart state itself; the backend empties the
+   * real cart as part of a successful checkout, so call list()/rely on
+   * the next cart load to reflect the now-empty cart.
+   */
+  async checkout(addressId: string, paymentMethod: 'cod' = 'cod'): Promise<OrderConfirmation> {
+    const { data: envelope } = await api.post('/cart/checkout', { addressId, paymentMethod });
+    return envelope.data;
+  },
 };
+
+export interface OrderConfirmation {
+  orderId: number;
+  orderNumber: string;
+  status: string;
+  total: number;
+  itemCount: number;
+  createdAt: string | null;
+}

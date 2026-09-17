@@ -33,6 +33,7 @@ import { useHistory } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { addressesService, Address, AddressInput } from "../../services/addresses.service";
 import { couponsService, CouponValidationResult } from "../../services/coupons.service";
+import { cartService, OrderConfirmation as OrderConfirmationData } from "../../services/cart.service";
 // import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import OrderConfirmation from "./OrderConfirmation/OrderConfirmation";
 import "./Cart.css";
@@ -114,15 +115,15 @@ const EMPTY_FORM: AddressFormState = {
 
 const CartPage: React.FC = () => {
   const history = useHistory();
-  const { state, updateCartQty: persistCartQty, removeFromCart: persistRemoveFromCart, clearCart: persistClearCart, loadCart } = useApp();
+  const { state, updateCartQty: persistCartQty, removeFromCart: persistRemoveFromCart, loadCart } = useApp();
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "upi" | "card">(
     "cod",
   );
   const [placing, setPlacing] = useState(false);
-  const [orderSummary, setOrderSummary] = useState<{
-    orderId: string;
-    amount: number;
-  } | null>(null);
+  const [orderSummary, setOrderSummary] = useState<OrderConfirmationData | null>(
+    null,
+  );
+  const [checkoutError, setCheckoutError] = useState("");
 
   // Address state — now backed by the real addresses API instead of
   // MOCK_ADDRESSES. addressesLoading/addressesError cover the initial
@@ -420,25 +421,35 @@ const CartPage: React.FC = () => {
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setFormState((prev) => ({ ...prev, [field]: e.target.value }));
 
-  // ⚠️ Still fully mocked — a fake 900ms delay and a client-generated
-  // orderId, no real call to the checkout endpoint your API reference
-  // already documents (POST /api/orders/checkout). This wasn't part of
-  // the cart-persistence work, but it's the next real gap: right now
-  // "placing an order" doesn't create anything in WooCommerce at all,
-  // it just clears the (now real) cart and shows a fake confirmation.
+  // Real checkout — creates an actual WooCommerce order via
+  // medmeu_app_checkout() (medmeu-app-cart-api.php on the WordPress
+  // side), using the real synced cart's already-correct line totals.
+  // COD only for now (see the disabled UPI/card options above) —
+  // paymentMethod is still passed through as a real parameter so
+  // adding other methods later doesn't need this function rewritten.
   const placeOrder = async () => {
-    if (!meetsMinOrder || !selectedAddress) return;
+    if (!meetsMinOrder || !selectedAddress || paymentMethod !== "cod") return;
     setPlacing(true);
-    await new Promise((r) => setTimeout(r, 900));
-    const orderId = `MED${Date.now().toString().slice(-8)}`;
-    setOrderSummary({ orderId, amount: finalTotal });
+    setCheckoutError("");
     try {
-      await persistClearCart();
-    } catch (err) {
-      console.error("Failed to clear cart after order", err);
+      const order = await cartService.checkout(selectedAddress.id, "cod");
+      setOrderSummary(order);
+      setAppliedCoupon(null);
+      // Backend already empties the real cart as part of a successful
+      // checkout — refresh local state to reflect that rather than
+      // making a separate, redundant clear-cart call.
+      await loadCart();
+    } catch (err: any) {
+      // Real server-side rejections surface here now — out of stock,
+      // below minimum order value, invalid/missing address, etc. — not
+      // just network errors. Shown inline rather than silently failing.
+      const message =
+        err?.response?.data?.message ||
+        "Could not place your order — please try again.";
+      setCheckoutError(message);
+    } finally {
+      setPlacing(false);
     }
-    setAppliedCoupon(null);
-    setPlacing(false);
   };
 
   const handleConfirmationFinish = () => {
@@ -630,26 +641,30 @@ const CartPage: React.FC = () => {
                     icon: cashOutline,
                     title: "Cash on Delivery",
                     sub: "Pay when your order arrives",
+                    available: true,
                   },
                   {
                     id: "upi",
                     icon: phonePortraitOutline,
                     title: "UPI / Net Banking",
-                    sub: "Pay via GPay, PhonePe, Paytm & more",
+                    sub: "Coming soon",
+                    available: false,
                   },
                   {
                     id: "card",
                     icon: cardOutline,
                     title: "Credit / Debit Card",
-                    sub: "Visa, Mastercard, RuPay accepted",
+                    sub: "Coming soon",
+                    available: false,
                   },
                 ].map((opt) => (
                   <button
                     key={opt.id}
                     className={`payment-option ${
                       paymentMethod === opt.id ? "selected" : ""
-                    }`}
-                    onClick={() => setPaymentMethod(opt.id as any)}
+                    } ${!opt.available ? "disabled" : ""}`}
+                    disabled={!opt.available}
+                    onClick={() => opt.available && setPaymentMethod(opt.id as any)}
                   >
                     <IonIcon icon={opt.icon} />
                     <div className="payment-option-text">
@@ -765,28 +780,39 @@ const CartPage: React.FC = () => {
 
       <OrderConfirmation
         isOpen={!!orderSummary}
-        amount={orderSummary?.amount ?? 0}
-        orderId={orderSummary?.orderId ?? ""}
+        amount={orderSummary?.total ?? 0}
+        orderId={orderSummary?.orderNumber ?? ""}
         onFinish={handleConfirmationFinish}
       />
 
       {state.cartItems.length > 0 && (
-        <div className="checkout-bar">
-          <div className="checkout-amount">
-            <span className="checkout-label">Total Amount</span>
-            <span className="checkout-total">
-              ₹{finalTotal.toLocaleString()}
-            </span>
+        <>
+          {checkoutError && (
+            <div className="delivery-progress-card" style={{ borderColor: "#C62828", margin: "0 16px 8px" }}>
+              <p className="delivery-progress-text" style={{ color: "#C62828" }}>
+                {checkoutError}
+              </p>
+            </div>
+          )}
+          <div className="checkout-bar">
+            <div className="checkout-amount">
+              <span className="checkout-label">Total Amount</span>
+              <span className="checkout-total">
+                ₹{finalTotal.toLocaleString()}
+              </span>
+            </div>
+            <button
+              className="checkout-btn"
+              onClick={placeOrder}
+              disabled={
+                placing || !selectedAddress || !meetsMinOrder || paymentMethod !== "cod"
+              }
+            >
+              {placing ? "Placing..." : "Place Order"}
+              {!placing && <IonIcon icon={chevronForward} />}
+            </button>
           </div>
-          <button
-            className="checkout-btn"
-            onClick={placeOrder}
-            disabled={placing || !selectedAddress || !meetsMinOrder}
-          >
-            {placing ? "Placing..." : "Place Order"}
-            {!placing && <IonIcon icon={chevronForward} />}
-          </button>
-        </div>
+        </>
       )}
 
       {/* ════════ Address Bottom Sheet ════════ */}
