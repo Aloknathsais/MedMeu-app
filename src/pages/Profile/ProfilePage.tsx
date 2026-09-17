@@ -17,7 +17,7 @@ import './Profile.css';
 
 const ProfilePage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, loadWishlist } = useApp();
   const [showLogout, setShowLogout] = useState(false);
 
   // Real counts — were hardcoded to 3 and 2 before.
@@ -32,6 +32,8 @@ const ProfilePage: React.FC = () => {
     addressesService.list()
       .then(addresses => { if (!cancelled) setAddressCount(addresses.length); })
       .catch(err => console.error('Failed to load address count', err));
+    loadWishlist()
+      .catch(err => console.error('Failed to load wishlist count', err));
     return () => { cancelled = true; };
   }, []);
 
