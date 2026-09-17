@@ -7,6 +7,8 @@ export interface WishlistItem {
   image: string;
   inStock: boolean;
   addedAt: number | null;
+  unit: string;
+  weight: number;
 }
 
 export interface WishlistData {
