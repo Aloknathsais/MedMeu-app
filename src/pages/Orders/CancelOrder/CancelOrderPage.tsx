@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonBackButton, IonButtons, IonIcon, IonToast,
+  IonBackButton, IonButtons, IonIcon, IonToast, IonSpinner,
 } from '@ionic/react';
 import {
   closeCircleOutline, chevronForwardOutline, warningOutline,
   checkmarkCircleOutline, informationCircleOutline,
 } from 'ionicons/icons';
 import { useParams, useHistory } from 'react-router-dom';
-import { mockOrders } from '../../../utils/mockData';
+import { ordersService, UiOrder } from '../../../services/orders.service';
 import './CancelOrder.css';
 
 /* ── Cancellation reasons ── */
@@ -29,17 +29,61 @@ const CancelOrderPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
 
+  const [order, setOrder] = useState<UiOrder | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
   const [step, setStep] = useState<Step>('reason');
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [otherText, setOtherText] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  
 
-  const order = mockOrders.find(o => o.id === id);
+  useEffect(() => {
+    let cancelled = false;
+    ordersService
+      .getById(id)
+      .then((o) => {
+        if (cancelled) return;
+        // Guard against deep-linking to /order/:id/cancel for an order
+        // that can no longer actually be cancelled — the backend would
+        // reject it anyway, but catching it here gives a clearer
+        // message than a generic API error.
+        if (!o.isCancellable) {
+          setNotFound(true);
+        } else {
+          setOrder(o);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load order', err);
+        if (!cancelled) setNotFound(true);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [id]);
 
-  if (!order) {
+  if (loading) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonButtons slot="start"><IonBackButton /></IonButtons>
+            <IonTitle>Cancel Order</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ textAlign: 'center', padding: '80px 24px', color: '#888' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading order...</p>
+          </div>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  if (notFound || !order) {
     return (
       <IonPage>
         <IonHeader>
@@ -51,7 +95,9 @@ const CancelOrderPage: React.FC = () => {
         <IonContent>
           <div style={{ padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 48 }}>📦</div>
-            <p style={{ color: '#888' }}>Order not found.</p>
+            <p style={{ color: '#888' }}>
+              This order can't be cancelled — it may already be delivered, cancelled, or no longer exists.
+            </p>
           </div>
         </IonContent>
       </IonPage>
@@ -59,11 +105,11 @@ const CancelOrderPage: React.FC = () => {
   }
 
   const selectedReasonObj = CANCEL_REASONS.find(r => r.id === selectedReason);
-  const total = order.items.reduce((s: number, i: any) => s + i.price * i.qty, 0);
   const isOther = selectedReason === 'r8';
   const finalReason = isOther
     ? otherText.trim()
     : selectedReasonObj?.label ?? '';
+  const isCod = order.paymentMethod === 'cod';
 
   const handleNext = () => {
     if (!selectedReason) { setError('Please select a reason to continue.'); return; }
@@ -73,11 +119,19 @@ const CancelOrderPage: React.FC = () => {
   };
 
   const handleConfirmCancel = async () => {
-    setLoading(true);
-    // Replace with real API call: await cancelOrder(id, finalReason)
-    await new Promise(r => setTimeout(r, 1200));
-    setLoading(false);
-    setStep('success');
+    setCancelling(true);
+    setError('');
+    try {
+      await ordersService.cancel(order.id, finalReason);
+      setStep('success');
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || 'Could not cancel this order — please try again.';
+      setError(message);
+      setStep('reason'); // back to a step where the error is visible
+    } finally {
+      setCancelling(false);
+    }
   };
 
   return (
@@ -104,24 +158,25 @@ const CancelOrderPage: React.FC = () => {
         {/* ════════ STEP 1 — Select reason ════════ */}
         {step === 'reason' && (
           <>
-            {/* Order summary strip */}
             <div className="co-order-strip">
               <div className="co-order-strip-left">
-                <p className="co-strip-id">#{order.id}</p>
+                <p className="co-strip-id">#{order.orderNumber}</p>
                 <p className="co-strip-items">
-                  {order.items.map((i: any) => i.name).join(', ')}
+                  {order.items.map((i) => i.name).join(', ')}
                 </p>
               </div>
-              <p className="co-strip-total">₹{total.toLocaleString()}</p>
+              <p className="co-strip-total">₹{order.total.toLocaleString()}</p>
             </div>
 
-            {/* Info note */}
             <div className="co-info-note">
               <IonIcon icon={informationCircleOutline} />
-              <p>Once cancelled, your order cannot be restored. Refund (if applicable) will be processed within 5-7 business days.</p>
+              <p>
+                {isCod
+                  ? 'Once cancelled, your order cannot be restored. No refund is applicable for Cash on Delivery orders.'
+                  : 'Once cancelled, your order cannot be restored. Refund will be processed within 5–7 business days.'}
+              </p>
             </div>
 
-            {/* Reason list */}
             <p className="co-section-label">Why are you cancelling?</p>
             <div className="co-reasons-list">
               {CANCEL_REASONS.map(reason => {
@@ -142,7 +197,6 @@ const CancelOrderPage: React.FC = () => {
               })}
             </div>
 
-            {/* Other text area */}
             {isOther && (
               <div className="co-other-wrap">
                 <textarea
@@ -180,23 +234,22 @@ const CancelOrderPage: React.FC = () => {
                 You're about to cancel this order. This action cannot be undone.
               </p>
 
-              {/* Order recap */}
               <div className="co-confirm-card">
                 <div className="co-confirm-row">
                   <span>Order ID</span>
-                  <strong>#{order.id}</strong>
+                  <strong>#{order.orderNumber}</strong>
                 </div>
                 <div className="co-confirm-row">
                   <span>Date</span>
-                  <strong>{new Date(order.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                  <strong>{new Date(order.dateCreated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
                 </div>
                 <div className="co-confirm-row">
                   <span>Items</span>
-                  <strong>{order.items.reduce((s: number, i: any) => s + i.qty, 0)} item{order.items.reduce((s: number, i: any) => s + i.qty, 0) > 1 ? 's' : ''}</strong>
+                  <strong>{order.itemCount} item{order.itemCount > 1 ? 's' : ''}</strong>
                 </div>
                 <div className="co-confirm-row">
                   <span>Total</span>
-                  <strong>₹{total.toLocaleString()}</strong>
+                  <strong>₹{order.total.toLocaleString()}</strong>
                 </div>
                 <div className="co-confirm-divider" />
                 <div className="co-confirm-row reason-row">
@@ -205,14 +258,14 @@ const CancelOrderPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Refund note */}
               <div className="co-refund-note">
                 <span className="co-refund-icon">💰</span>
                 <div>
                   <p className="co-refund-title">Refund Policy</p>
                   <p className="co-refund-text">
-                    If you paid online, ₹{total.toLocaleString()} will be refunded to your original payment method within 5–7 business days.
-                    For COD orders, no refund is applicable.
+                    {isCod
+                      ? 'This order was placed as Cash on Delivery — no payment was collected, so no refund is applicable.'
+                      : `₹${order.total.toLocaleString()} will be refunded to your original payment method within 5–7 business days.`}
                   </p>
                 </div>
               </div>
@@ -230,7 +283,7 @@ const CancelOrderPage: React.FC = () => {
             </div>
             <h2 className="co-success-title">Order Cancelled</h2>
             <p className="co-success-subtitle">
-              Your order #{order.id} has been successfully cancelled.
+              Your order #{order.orderNumber} has been successfully cancelled.
             </p>
 
             <div className="co-success-card">
@@ -239,17 +292,15 @@ const CancelOrderPage: React.FC = () => {
                 <strong>{finalReason}</strong>
               </div>
               <div className="co-confirm-divider" />
+              {!isCod && (
+                <div className="co-success-row">
+                  <span>Refund Amount</span>
+                  <strong className="co-refund-amount">₹{order.total.toLocaleString()}</strong>
+                </div>
+              )}
               <div className="co-success-row">
-                <span>Refund Amount</span>
-                <strong className="co-refund-amount">₹{total.toLocaleString()}</strong>
-              </div>
-              <div className="co-success-row">
-                <span>Refund Timeline</span>
-                <strong>5–7 business days</strong>
-              </div>
-              <div className="co-success-row">
-                <span>Refund Mode</span>
-                <strong>Original payment method</strong>
+                <span>{isCod ? 'Refund' : 'Refund Timeline'}</span>
+                <strong>{isCod ? 'Not applicable (COD)' : '5–7 business days'}</strong>
               </div>
             </div>
 
@@ -266,7 +317,6 @@ const CancelOrderPage: React.FC = () => {
 
       </IonContent>
 
-      {/* ── Bottom CTA bar ── */}
       {step === 'reason' && (
         <div className="co-bottom-bar">
           <button className="co-btn-outline-sm" onClick={() => history.goBack()}>
@@ -283,8 +333,8 @@ const CancelOrderPage: React.FC = () => {
           <button className="co-btn-outline-sm" onClick={() => setStep('reason')}>
             Go Back
           </button>
-          <button className="co-btn-danger" onClick={handleConfirmCancel} disabled={loading}>
-            {loading ? 'Cancelling...' : 'Yes, Cancel Order'}
+          <button className="co-btn-danger" onClick={handleConfirmCancel} disabled={cancelling}>
+            {cancelling ? 'Cancelling...' : 'Yes, Cancel Order'}
           </button>
         </div>
       )}

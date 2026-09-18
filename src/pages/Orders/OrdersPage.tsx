@@ -1,100 +1,55 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonButton, IonIcon, IonBackButton, IonButtons,
+  IonButton, IonIcon, IonBackButton, IonButtons, IonSpinner,
 } from '@ionic/react';
 import {
-  checkmarkCircle, timeOutline, carOutline, closeCircleOutline,
+  checkmarkCircle, timeOutline, closeCircleOutline,
   chevronDownOutline, chevronUpOutline, callOutline, downloadOutline,
   bagHandleOutline, cubeOutline, locationOutline, cartOutline,
-  businessOutline, homeOutline, starOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { mockOrders } from '../../utils/mockData';
+import { ordersService, UiOrder, UiOrderStatus } from '../../services/orders.service';
 import './Orders.css';
 
 type FilterTab = 'all' | 'active' | 'delivered' | 'cancelled';
 
-const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-  Delivered:    { color: 'success', icon: checkmarkCircle,   label: 'Delivered' },
-  'In Transit': { color: 'warning', icon: carOutline,        label: 'In Transit' },
-  Processing:   { color: 'primary', icon: timeOutline,       label: 'Processing' },
-  Cancelled:    { color: 'danger',  icon: closeCircleOutline, label: 'Cancelled' },
-};
-
-/* ── Full tracking timeline steps ── */
-interface TrackStep {
-  key: string;
-  label: string;
-  description: string;
-  icon: any;
-  time?: string;
-}
-
-const buildTrackingSteps = (order: any): TrackStep[] => [
-  {
-    key: 'placed',
-    label: 'Order Placed',
-    description: `Your order #${order.id} was placed successfully.`,
-    icon: cartOutline,
-    time: new Date(order.date).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
-  },
-  {
-    key: 'confirmed',
-    label: 'Order Confirmed',
-    description: 'Seller has confirmed your order and is preparing it.',
-    icon: checkmarkCircle,
-    time: order.status !== 'Processing' && order.status !== 'Cancelled'
-      ? new Date(new Date(order.date).getTime() + 2 * 3600000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : undefined,
-  },
-  {
-    key: 'packed',
-    label: 'Packed & Ready',
-    description: 'Items packed and handed over to delivery partner.',
-    icon: businessOutline,
-    time: order.status === 'In Transit' || order.status === 'Delivered'
-      ? new Date(new Date(order.date).getTime() + 26 * 3600000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : undefined,
-  },
-  {
-    key: 'shipped',
-    label: 'Out for Delivery',
-    description: 'Your order is out for delivery. Delivery partner is on the way.',
-    icon: carOutline,
-    time: order.status === 'In Transit' || order.status === 'Delivered'
-      ? new Date(new Date(order.date).getTime() + 28 * 3600000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : undefined,
-  },
-  {
-    key: 'delivered',
-    label: 'Delivered',
-    description: 'Order delivered successfully. Enjoy your purchase!',
-    icon: homeOutline,
-    time: order.status === 'Delivered'
-      ? new Date(new Date(order.date).getTime() + 30 * 3600000).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-      : undefined,
-  },
-];
-
-const stepIndexForStatus = (status: string) => {
-  if (status === 'Processing')   return 1;
-  if (status === 'In Transit')   return 3;
-  if (status === 'Delivered')    return 4;
-  return 0;
+const statusConfig: Record<UiOrderStatus, { color: string; icon: any; label: string }> = {
+  delivered:  { color: 'success', icon: checkmarkCircle,   label: 'Delivered' },
+  processing: { color: 'primary', icon: timeOutline,       label: 'Processing' },
+  cancelled:  { color: 'danger',  icon: closeCircleOutline, label: 'Cancelled' },
 };
 
 const OrdersPage: React.FC = () => {
   const history = useHistory();
-  const [selected, setSelected] = useState<string | null>(null);
+  const [orders, setOrders] = useState<UiOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [selected, setSelected] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterTab>('all');
-  const [showTracking, setShowTracking] = useState<string | null>(null);
 
-  const filteredOrders = mockOrders.filter(o => {
+  const load = () => {
+    setLoading(true);
+    setError('');
+    ordersService
+      .list({ per_page: 50 }) // simple client-side filtering below; revisit with real pagination if order volume grows
+      .then((res) => setOrders(res.orders))
+      .catch((err) => {
+        console.error('Failed to load orders', err);
+        setError('Could not load your orders right now.');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filteredOrders = orders.filter((o) => {
     if (filter === 'all') return true;
-    if (filter === 'active') return o.status === 'Processing' || o.status === 'In Transit';
-    if (filter === 'delivered') return o.status === 'Delivered';
-    if (filter === 'cancelled') return o.status === 'Cancelled';
+    if (filter === 'active') return o.status === 'processing';
+    if (filter === 'delivered') return o.status === 'delivered';
+    if (filter === 'cancelled') return o.status === 'cancelled';
     return true;
   });
 
@@ -108,7 +63,6 @@ const OrdersPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
-        {/* Filter tabs */}
         <div className="order-filter-tabs">
           {([
             { key: 'all',       label: 'All' },
@@ -124,7 +78,17 @@ const OrdersPage: React.FC = () => {
           ))}
         </div>
 
-        {filteredOrders.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '80px 24px', color: '#888' }}>
+            <IonSpinner name="crescent" />
+            <p>Loading your orders...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+            <p style={{ color: '#C62828' }}>{error}</p>
+            <IonButton onClick={load} style={{ marginTop: 12 }}>Retry</IonButton>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <div className="orders-empty">
             <div className="orders-empty-icon-wrap">
               <IonIcon icon={bagHandleOutline} />
@@ -138,12 +102,8 @@ const OrdersPage: React.FC = () => {
         ) : (
           <div className="orders-list">
             {filteredOrders.map(order => {
-              const cfg = statusConfig[order.status] || statusConfig.Processing;
+              const cfg = statusConfig[order.status];
               const open = selected === order.id;
-              const trackingOpen = showTracking === order.id;
-              const currentStep = stepIndexForStatus(order.status);
-              const itemCount = order.items.reduce((s: number, i: any) => s + i.qty, 0);
-              const trackingSteps = buildTrackingSteps(order);
 
               return (
                 <div key={order.id} className={`order-card ${open ? 'expanded' : ''}`}>
@@ -156,10 +116,10 @@ const OrdersPage: React.FC = () => {
                         <IonIcon icon={cfg.icon} />
                       </div>
                       <div>
-                        <p className="order-id">#{order.id}</p>
+                        <p className="order-id">#{order.orderNumber}</p>
                         <p className="order-date">
-                          {new Date(order.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {' · '}{itemCount} {itemCount === 1 ? 'item' : 'items'}
+                          {new Date(order.dateCreated).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}{order.itemCount} {order.itemCount === 1 ? 'item' : 'items'}
                         </p>
                       </div>
                     </div>
@@ -173,154 +133,117 @@ const OrdersPage: React.FC = () => {
                   {open && (
                     <div className="order-details">
 
-                      {/* Items list */}
+                      {/* Real items, from the actual order's line items — clicking one navigates to that product's detail page */}
                       <div className="order-items-list">
-                        {order.items.map((item: any, i: number) => (
-                          <div key={i} className="order-item-row">
+                        {order.items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="order-item-row"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => history.push(`/product/${item.productId}`)}
+                          >
                             <div className="order-item-icon">
-                              <IonIcon icon={cubeOutline} />
+                              {item.image ? (
+                                <img src={item.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                              ) : (
+                                <IonIcon icon={cubeOutline} />
+                              )}
                             </div>
                             <div className="order-item-text">
                               <p className="order-item-name">{item.name}</p>
-                              <p className="order-item-qty">Qty: {item.qty}</p>
+                              <p className="order-item-qty">Qty: {item.quantity}</p>
                             </div>
-                            <span className="order-item-price">₹{item.price.toLocaleString()}</span>
+                            <span className="order-item-price">₹{item.total.toLocaleString()}</span>
                           </div>
                         ))}
                       </div>
 
-                      {/* ── Delivery info strip ── */}
-                      {order.status !== 'Cancelled' && (
+                      {/* Real delivery address — was hardcoded "123, MG Road..." before */}
+                      {order.status !== 'cancelled' && (
                         <div className="order-delivery-strip">
                           <IonIcon icon={locationOutline} />
                           <div>
                             <p className="delivery-strip-label">Delivering to</p>
-                            <p className="delivery-strip-addr">123, MG Road, Bhubaneswar - 751001</p>
+                            <p className="delivery-strip-addr">
+                              {order.address.line1}
+                              {order.address.line2 ? `, ${order.address.line2}` : ''}, {order.address.city} - {order.address.pincode}
+                            </p>
                           </div>
                         </div>
                       )}
 
-                      {/* ── Track Order toggle ── */}
-                      {order.status !== 'Cancelled' && (
-                        <button
-                          className="track-toggle-btn"
-                          onClick={() => setShowTracking(trackingOpen ? null : order.id)}
-                        >
-                          <div className="track-toggle-left">
-                            <IonIcon icon={carOutline} />
-                            <span>Track Order</span>
-                          </div>
-                          <IonIcon
-                            icon={trackingOpen ? chevronUpOutline : chevronDownOutline}
-                            className="track-toggle-chevron"
-                          />
-                        </button>
-                      )}
-
-                      {/* ── Vertical tracking timeline ── */}
-                      {trackingOpen && order.status !== 'Cancelled' && (
-                        <div className="tracking-timeline">
-                          {trackingSteps.map((step, i) => {
-                            const isDone    = i <= currentStep;
-                            const isCurrent = i === currentStep;
-                            const isLast    = i === trackingSteps.length - 1;
-                            return (
-                              <div key={step.key} className={`timeline-step ${isDone ? 'done' : 'pending'} ${isCurrent ? 'current' : ''}`}>
-                                {/* Line connecting steps */}
-                                {!isLast && (
-                                  <div className={`timeline-line ${isDone && i < currentStep ? 'filled' : ''}`} />
-                                )}
-
-                                {/* Step icon */}
-                                <div className="timeline-icon-wrap">
-                                  <div className={`timeline-icon ${isDone ? 'done' : 'pending'} ${isCurrent ? 'current' : ''}`}>
-                                    <IonIcon icon={isDone ? checkmarkCircle : step.icon} />
-                                  </div>
-                                </div>
-
-                                {/* Step content */}
-                                <div className="timeline-content">
-                                  <div className="timeline-header-row">
-                                    <p className={`timeline-label ${isDone ? 'done' : 'pending'}`}>
-                                      {step.label}
-                                      {isCurrent && <span className="timeline-current-pill">Current</span>}
-                                    </p>
-                                    {step.time && (
-                                      <span className="timeline-time">{step.time}</span>
-                                    )}
-                                  </div>
-                                  <p className={`timeline-desc ${isDone ? 'done' : 'pending'}`}>
-                                    {step.description}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-
-                          {/* Estimated delivery */}
-                          {order.status !== 'Delivered' && (
-                            <div className="estimated-delivery">
-                              <IonIcon icon={homeOutline} />
-                              <span>Estimated delivery by <strong>
-                                {new Date(new Date(order.date).getTime() + 30 * 3600000)
-                                  .toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                              </strong></span>
-                            </div>
-                          )}
+                      {/* ── Simplified real status — no fabricated packed/
+                          shipped timestamps. WooCommerce only actually
+                          confirms 3 real moments: placed, (in progress),
+                          and completed. A real "in transit" step would
+                          need a shipment-tracking plugin, which hasn't
+                          been checked yet — see the caveat in
+                          orders.service.ts. ── */}
+                      {order.status !== 'cancelled' && (
+                        <div className="order-status-note">
+                          <IonIcon icon={order.status === 'delivered' ? checkmarkCircle : cartOutline} />
+                          <span>
+                            {order.status === 'delivered'
+                              ? `Delivered on ${order.dateCompleted ? new Date(order.dateCompleted).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}`
+                              : 'Your order is being processed.'}
+                          </span>
                         </div>
                       )}
 
-                      {/* Cancelled note */}
-                      {order.status === 'Cancelled' && (
+                      {order.status === 'cancelled' && (
                         <div className="cancelled-note">
                           <IonIcon icon={closeCircleOutline} />
                           <span>This order was cancelled</span>
                         </div>
                       )}
 
-                      {/* ── Action buttons ── */}
+                      {/* ── Action buttons ──
+                          Invoice/Buy Again/Support are NOT wired to
+                          anything real yet — disabled rather than left
+                          silently broken. */}
                       <div className="order-actions">
-                        {order.status === 'Delivered' && (
+                        {order.status === 'delivered' && (
                           <>
                             <button className="order-action-btn outline"
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn outline">
+                            <button className="order-action-btn outline" disabled title="Coming soon">
                               <IonIcon icon={downloadOutline} /> Invoice
                             </button>
-                            <button className="order-action-btn solid">Buy Again</button>
+                            <button className="order-action-btn solid" disabled title="Coming soon">Buy Again</button>
                           </>
                         )}
-                        {(order.status === 'Processing' || order.status === 'In Transit') && (
+                        {order.status === 'processing' && (
                           <>
                             <button className="order-action-btn outline"
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn outline danger"
-                              onClick={() => history.push(`/order/${order.id}/cancel`)}>
-                              Cancel Order
-                            </button>
-                            <button className="order-action-btn outline">
+                            {order.isCancellable && (
+                              <button className="order-action-btn outline danger"
+                                onClick={() => history.push(`/order/${order.id}/cancel`)}>
+                                Cancel Order
+                              </button>
+                            )}
+                            <button className="order-action-btn outline" disabled title="Coming soon">
                               <IonIcon icon={callOutline} /> Support
                             </button>
                           </>
                         )}
-                        {order.status === 'Cancelled' && (
+                        {order.status === 'cancelled' && (
                           <>
                             <button className="order-action-btn outline"
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn solid">Buy Again</button>
+                            <button className="order-action-btn solid" disabled title="Coming soon">Buy Again</button>
                           </>
                         )}
                       </div>
                     </div>
                   )}
 
-                  {/* Expand toggle chevron */}
                   <button className="order-expand-toggle"
                     onClick={() => setSelected(open ? null : order.id)}>
                     <IonIcon icon={open ? chevronUpOutline : chevronDownOutline} />
