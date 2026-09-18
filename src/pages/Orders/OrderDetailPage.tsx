@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonBackButton, IonButtons, IonIcon, IonButton, IonSpinner,
+  IonBackButton, IonButtons, IonIcon, IonButton, IonSpinner, IonToast,
 } from '@ionic/react';
 import {
   checkmarkCircle, cartOutline, carOutline,
@@ -11,6 +11,7 @@ import {
   cardOutline, cashOutline, phonePortraitOutline,
 } from 'ionicons/icons';
 import { useParams, useHistory } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import { ordersService, UiOrder, UiOrderStatus } from '../../services/orders.service';
 import './OrderDetail.css';
 
@@ -31,10 +32,57 @@ function paymentDisplay(method: string, title: string) {
 const OrderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
+  const { addToCart: persistAddToCart } = useApp();
   const [copied, setCopied] = useState(false);
   const [order, setOrder] = useState<UiOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [buyingAgain, setBuyingAgain] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+  /** Same logic as OrdersPage.tsx's buyAgain — see that file for the full reasoning on why each item is added independently. */
+  const buyAgain = async () => {
+    if (!order) return;
+    setBuyingAgain(true);
+    let added = 0;
+    const failedNames: string[] = [];
+
+    for (const item of order.items) {
+      try {
+        await persistAddToCart({
+          id: String(item.productId),
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          quantity: item.quantity,
+          unit: 'unit',
+          weight: 0,
+        });
+        added += 1;
+      } catch (err) {
+        console.error(`Failed to re-add "${item.name}" to cart`, err);
+        failedNames.push(item.name);
+      }
+    }
+
+    setBuyingAgain(false);
+
+    if (added === 0) {
+      setToastMsg('Could not add any items — they may no longer be available.');
+      setShowToast(true);
+      return;
+    }
+    if (failedNames.length > 0) {
+      setToastMsg(`Added ${added} item${added > 1 ? 's' : ''} to cart. Unavailable: ${failedNames.join(', ')}.`);
+      setShowToast(true);
+      setTimeout(() => history.push('/tabs/cart'), 1800);
+    } else {
+      setToastMsg('All items added to cart!');
+      setShowToast(true);
+      setTimeout(() => history.push('/tabs/cart'), 1200);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -282,10 +330,11 @@ const OrderDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Action buttons — Invoice/Rate/Buy Again/Support are NOT
-            wired to anything real yet, disabled rather than silently
-            broken. Cancel is real and gated on the backend's own
-            isCancellable check. ── */}
+        {/* ── Action buttons — Invoice/Rate/Support are NOT wired to
+            anything real yet, disabled rather than silently broken.
+            Buy Again re-adds this order's items to the real cart (see
+            buyAgain() above). Cancel is real and gated on the
+            backend's own isCancellable check. ── */}
         <div className="od-actions">
           {order.status === 'delivered' && (
             <>
@@ -295,7 +344,13 @@ const OrderDetailPage: React.FC = () => {
               <button className="od-action-btn outline" disabled title="Coming soon">
                 <IonIcon icon={starOutline} /> Rate Products
               </button>
-              <button className="od-action-btn solid" disabled title="Coming soon">Buy Again</button>
+              <button
+              className="od-action-btn solid"
+              disabled={buyingAgain}
+              onClick={buyAgain}
+            >
+              {buyingAgain ? 'Adding...' : 'Buy Again'}
+            </button>
             </>
           )}
           {order.status === 'processing' && (
@@ -312,12 +367,27 @@ const OrderDetailPage: React.FC = () => {
             </>
           )}
           {order.status === 'cancelled' && (
-            <button className="od-action-btn solid" disabled title="Coming soon">Buy Again</button>
+            <button
+              className="od-action-btn solid"
+              disabled={buyingAgain}
+              onClick={buyAgain}
+            >
+              {buyingAgain ? 'Adding...' : 'Buy Again'}
+            </button>
           )}
         </div>
 
         <div style={{ height: 32 }} />
       </IonContent>
+
+      <IonToast
+        isOpen={showToast}
+        message={toastMsg}
+        duration={2000}
+        onDidDismiss={() => setShowToast(false)}
+        position="bottom"
+        color={toastMsg.startsWith('Could not') ? 'danger' : 'success'}
+      />
     </IonPage>
   );
 };

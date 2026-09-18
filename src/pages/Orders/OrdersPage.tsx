@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonButton, IonIcon, IonBackButton, IonButtons, IonSpinner,
+  IonButton, IonIcon, IonBackButton, IonButtons, IonSpinner, IonToast,
 } from '@ionic/react';
 import {
   checkmarkCircle, timeOutline, closeCircleOutline,
@@ -9,6 +9,7 @@ import {
   bagHandleOutline, cubeOutline, locationOutline, cartOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import { ordersService, UiOrder, UiOrderStatus } from '../../services/orders.service';
 import './Orders.css';
 
@@ -22,11 +23,66 @@ const statusConfig: Record<UiOrderStatus, { color: string; icon: any; label: str
 
 const OrdersPage: React.FC = () => {
   const history = useHistory();
+  const { addToCart: persistAddToCart } = useApp();
   const [orders, setOrders] = useState<UiOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [buyingAgain, setBuyingAgain] = useState<number | null>(null);
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
+  /**
+   * Re-adds an order's items to the real cart. Order line items are a
+   * HISTORICAL SNAPSHOT — the product may since be discontinued, out
+   * of stock, or repriced. Each add is attempted independently so one
+   * unavailable item doesn't block the rest; failures are summarized
+   * afterward rather than silently dropped. Current price/availability
+   * always comes from the real cart response regardless of what's
+   * passed here — same "server is authoritative" principle used
+   * throughout this app, so a stale snapshot price is harmless.
+   */
+  const buyAgain = async (order: UiOrder) => {
+    setBuyingAgain(order.id);
+    let added = 0;
+    const failedNames: string[] = [];
+
+    for (const item of order.items) {
+      try {
+        await persistAddToCart({
+          id: String(item.productId),
+          name: item.name,
+          price: item.price,
+          image: item.image,
+          quantity: item.quantity,
+          unit: 'unit', // best-effort placeholder — real value comes back from the server regardless, see comment above
+          weight: 0,
+        });
+        added += 1;
+      } catch (err) {
+        console.error(`Failed to re-add "${item.name}" to cart`, err);
+        failedNames.push(item.name);
+      }
+    }
+
+    setBuyingAgain(null);
+
+    if (added === 0) {
+      setToastMsg('Could not add any items — they may no longer be available.');
+      setShowToast(true);
+      return;
+    }
+    if (failedNames.length > 0) {
+      setToastMsg(`Added ${added} item${added > 1 ? 's' : ''} to cart. Unavailable: ${failedNames.join(', ')}.`);
+      setShowToast(true);
+      setTimeout(() => history.push('/tabs/cart'), 1800);
+    } else {
+      setToastMsg('All items added to cart!');
+      setShowToast(true);
+      setTimeout(() => history.push('/tabs/cart'), 1200);
+    }
+  };
 
   const load = () => {
     setLoading(true);
@@ -198,9 +254,10 @@ const OrdersPage: React.FC = () => {
                       )}
 
                       {/* ── Action buttons ──
-                          Invoice/Buy Again/Support are NOT wired to
-                          anything real yet — disabled rather than left
-                          silently broken. */}
+                          Invoice/Support are NOT wired to anything real
+                          yet — disabled rather than left silently
+                          broken. Buy Again re-adds this order's items
+                          to the real cart (see buyAgain() above). */}
                       <div className="order-actions">
                         {order.status === 'delivered' && (
                           <>
@@ -211,7 +268,13 @@ const OrdersPage: React.FC = () => {
                             <button className="order-action-btn outline" disabled title="Coming soon">
                               <IonIcon icon={downloadOutline} /> Invoice
                             </button>
-                            <button className="order-action-btn solid" disabled title="Coming soon">Buy Again</button>
+                            <button
+                              className="order-action-btn solid"
+                              disabled={buyingAgain === order.id}
+                              onClick={() => buyAgain(order)}
+                            >
+                              {buyingAgain === order.id ? 'Adding...' : 'Buy Again'}
+                            </button>
                           </>
                         )}
                         {order.status === 'processing' && (
@@ -237,7 +300,13 @@ const OrdersPage: React.FC = () => {
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn solid" disabled title="Coming soon">Buy Again</button>
+                            <button
+                              className="order-action-btn solid"
+                              disabled={buyingAgain === order.id}
+                              onClick={() => buyAgain(order)}
+                            >
+                              {buyingAgain === order.id ? 'Adding...' : 'Buy Again'}
+                            </button>
                           </>
                         )}
                       </div>
@@ -255,6 +324,15 @@ const OrdersPage: React.FC = () => {
         )}
         <div style={{ height: 24 }} />
       </IonContent>
+
+      <IonToast
+        isOpen={showToast}
+        message={toastMsg}
+        duration={2000}
+        onDidDismiss={() => setShowToast(false)}
+        position="bottom"
+        color={toastMsg.startsWith('Could not') ? 'danger' : 'success'}
+      />
     </IonPage>
   );
 };
