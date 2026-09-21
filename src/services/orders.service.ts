@@ -182,4 +182,39 @@ export const ordersService = {
     const { data: envelope } = await api.put(`/orders/mine/${id}/cancel`, { reason });
     return mapOrder(envelope.data);
   },
+
+  /**
+   * Downloads and displays the order's invoice PDF.
+   *
+   * The endpoint requires auth (our JWT), so a plain <a href> or
+   * window.open(url) can't be used directly — neither sends our
+   * Authorization header. Instead this fetches the PDF as a blob via
+   * the normal authenticated api client, then displays it.
+   *
+   * `targetWindow`: pass a window handle opened SYNCHRONOUSLY inside
+   * the button's onClick — i.e. `window.open('', '_blank')` called
+   * BEFORE this function runs, not after. Most mobile browsers/WebViews
+   * block window.open() calls that happen after an `await` (no longer
+   * considered a direct user gesture) — opening the blank window first
+   * and filling in its location once the PDF is ready avoids that.
+   */
+  async downloadInvoice(id: string | number, targetWindow?: Window | null): Promise<void> {
+    const response = await api.get(`/orders/mine/${id}/invoice`, { responseType: 'blob' });
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    if (targetWindow) {
+      targetWindow.location.href = url;
+    } else {
+      // Fallback if no pre-opened window was passed — may be blocked
+      // as a popup on some browsers/WebViews since it happens after
+      // an await, but still correct on platforms that allow it.
+      window.open(url, '_blank');
+    }
+
+    // Revoke after a delay long enough for the browser/WebView to
+    // actually load it — revoking immediately can break the view
+    // before it finishes loading.
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  },
 };

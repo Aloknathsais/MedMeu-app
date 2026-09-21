@@ -30,6 +30,7 @@ const OrdersPage: React.FC = () => {
   const [selected, setSelected] = useState<number | null>(null);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [buyingAgain, setBuyingAgain] = useState<number | null>(null);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -82,6 +83,26 @@ const OrdersPage: React.FC = () => {
       setShowToast(true);
       setTimeout(() => history.push('/tabs/cart'), 1200);
     }
+  };
+
+  /**
+   * Opens the target window SYNCHRONOUSLY (before the async fetch
+   * starts) — see the detailed comment on downloadInvoice() in
+   * orders.service.ts for why this order matters for avoiding
+   * popup-blocking on mobile.
+   */
+  const handleDownloadInvoice = (order: UiOrder) => {
+    const win = window.open('', '_blank');
+    setDownloadingInvoice(order.id);
+    ordersService
+      .downloadInvoice(order.id, win)
+      .catch((err) => {
+        console.error('Failed to download invoice', err);
+        win?.close();
+        setToastMsg('Could not download the invoice — please try again.');
+        setShowToast(true);
+      })
+      .finally(() => setDownloadingInvoice(null));
   };
 
   const load = () => {
@@ -254,10 +275,11 @@ const OrdersPage: React.FC = () => {
                       )}
 
                       {/* ── Action buttons ──
-                          Invoice/Support are NOT wired to anything real
-                          yet — disabled rather than left silently
-                          broken. Buy Again re-adds this order's items
-                          to the real cart (see buyAgain() above). */}
+                          Support is NOT wired to anything real yet —
+                          disabled rather than left silently broken.
+                          Invoice generates a real PDF server-side (see
+                          invoice.service.js). Buy Again re-adds this
+                          order's items to the real cart (see buyAgain() above). */}
                       <div className="order-actions">
                         {order.status === 'delivered' && (
                           <>
@@ -265,8 +287,12 @@ const OrdersPage: React.FC = () => {
                               onClick={() => history.push(`/order/${order.id}`)}>
                               View Details
                             </button>
-                            <button className="order-action-btn outline" disabled title="Coming soon">
-                              <IonIcon icon={downloadOutline} /> Invoice
+                            <button
+                              className="order-action-btn outline"
+                              disabled={downloadingInvoice === order.id}
+                              onClick={() => handleDownloadInvoice(order)}
+                            >
+                              <IonIcon icon={downloadOutline} /> {downloadingInvoice === order.id ? 'Preparing...' : 'Invoice'}
                             </button>
                             <button
                               className="order-action-btn solid"

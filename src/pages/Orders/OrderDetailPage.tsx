@@ -38,6 +38,7 @@ const OrderDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [buyingAgain, setBuyingAgain] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
 
@@ -82,6 +83,27 @@ const OrderDetailPage: React.FC = () => {
       setShowToast(true);
       setTimeout(() => history.push('/tabs/cart'), 1200);
     }
+  };
+
+  /**
+   * Opens the target window SYNCHRONOUSLY (before the async fetch
+   * starts) — see the detailed comment on downloadInvoice() in
+   * orders.service.ts for why this order of operations matters for
+   * avoiding popup-blocking on mobile.
+   */
+  const handleDownloadInvoice = () => {
+    if (!order) return;
+    const win = window.open('', '_blank');
+    setDownloadingInvoice(true);
+    ordersService
+      .downloadInvoice(order.id, win)
+      .catch((err) => {
+        console.error('Failed to download invoice', err);
+        win?.close();
+        setToastMsg('Could not download the invoice — please try again.');
+        setShowToast(true);
+      })
+      .finally(() => setDownloadingInvoice(false));
   };
 
   useEffect(() => {
@@ -330,16 +352,22 @@ const OrderDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Action buttons — Invoice/Rate/Support are NOT wired to
-            anything real yet, disabled rather than silently broken.
-            Buy Again re-adds this order's items to the real cart (see
+        {/* ── Action buttons — Rate Products/Contact Support are NOT
+            wired to anything real yet, disabled rather than silently
+            broken. Download Invoice generates a real PDF server-side
+            (see invoice.service.js). Buy Again re-adds this order's
+            items to the real cart (see
             buyAgain() above). Cancel is real and gated on the
             backend's own isCancellable check. ── */}
         <div className="od-actions">
           {order.status === 'delivered' && (
             <>
-              <button className="od-action-btn outline" disabled title="Coming soon">
-                <IonIcon icon={downloadOutline} /> Download Invoice
+              <button
+                className="od-action-btn outline"
+                disabled={downloadingInvoice}
+                onClick={handleDownloadInvoice}
+              >
+                <IonIcon icon={downloadOutline} /> {downloadingInvoice ? 'Preparing...' : 'Download Invoice'}
               </button>
               <button className="od-action-btn outline" disabled title="Coming soon">
                 <IonIcon icon={starOutline} /> Rate Products
