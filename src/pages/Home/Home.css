@@ -268,6 +268,20 @@
   padding: 4px 10px;
 }
 .google-rating-pill ion-icon { font-size: 13px; }
+.google-review-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 8px;
+  color: #777;
+  font-size: 12px;
+}
+.google-reviews-link {
+  color: var(--medmeu-orange);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
 
 .testimonial-top {
   display: flex;
@@ -353,7 +367,7 @@
   object-fit: cover;
   flex-shrink: 0;
 }
-.author-name { font-size: 13px; font-weight: 700; color: #1a1a2e; margin: 0; }
+.author-name { display: inline-block; font-size: 13px; font-weight: 700; color: #1a1a2e; margin: 0; text-decoration: none; }
 .author-time { font-size: 11px; color: #999; margin: 1px 0 0; }
 
 /* ══════════ Trust Badges Strip ══════════ */

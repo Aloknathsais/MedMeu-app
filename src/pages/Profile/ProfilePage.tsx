@@ -17,7 +17,7 @@ import './Profile.css';
 
 const ProfilePage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch, loadWishlist } = useApp();
+  const { state, loadWishlist } = useApp();
   const [showLogout, setShowLogout] = useState(false);
 
   // Real counts — were hardcoded to 3 and 2 before.
@@ -41,9 +41,7 @@ const ProfilePage: React.FC = () => {
 
   const handleLogout = () => {
     authService.logout();
-    dispatch({ type: 'SET_AUTH', payload: false });
-    dispatch({ type: 'SET_USER', payload: null });
-    history.replace('/login');
+    window.location.replace('/login');
   };
 
   const menuItems = [
@@ -126,9 +124,12 @@ const ProfilePage: React.FC = () => {
           message="Are you sure you want to logout?"
           buttons={[
             { text: 'Cancel', role: 'cancel' },
-            { text: 'Logout', role: 'destructive', handler: handleLogout },
+            { text: 'Logout', role: 'confirm', cssClass: 'alert-button-danger' },
           ]}
-          onDidDismiss={() => setShowLogout(false)}
+          onDidDismiss={(event) => {
+            setShowLogout(false);
+            if (event.detail.role === 'confirm') handleLogout();
+          }}
         />
       </IonContent>
     </IonPage>

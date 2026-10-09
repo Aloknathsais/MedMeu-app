@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isAxiosError } from 'axios';
 import {
   IonPage, IonContent, IonSpinner, IonIcon, IonText,
 } from '@ionic/react';
@@ -7,14 +8,18 @@ import { useIonRouter } from '@ionic/react';
 import { eyeOutline, eyeOffOutline, lockClosedOutline, personOutline } from 'ionicons/icons';
 import { useApp } from '../../context/AppContext';
 import { authService } from '../../services/auth.service';
+import { getGoogleIdToken } from '../../services/googleAuth.service';
 import './Auth.css';
 import Logo from '../../assets/logo.png';
 
 /** Pulls a displayable message out of whatever shape the backend/axios error is. */
-function extractErrorMessage(err: any): string {
-  const backendMessage = err?.response?.data?.message;
-  const firstDetail = err?.response?.data?.details?.[0]?.message;
-  return firstDetail || backendMessage || 'Invalid credentials. Please try again.';
+function extractErrorMessage(err: unknown): string {
+  if (isAxiosError<{ message?: string; details?: Array<{ message?: string }> }>(err)) {
+    const backendMessage = err.response?.data?.message;
+    const firstDetail = err.response?.data?.details?.[0]?.message;
+    return firstDetail || backendMessage || err.message || 'Invalid credentials. Please try again.';
+  }
+  return err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
 }
 
 const LoginPage: React.FC = () => {
@@ -48,11 +53,18 @@ const LoginPage: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    // TODO: Integrate Google OAuth
-    await new Promise(r => setTimeout(r, 1200));
-    setGoogleLoading(false);
-    // dispatch({ type: 'SET_AUTH', payload: true });
-    setError('Google login coming soon.');
+    setError('');
+    try {
+      const idToken = await getGoogleIdToken();
+      const { user } = await authService.loginWithGoogle(idToken);
+      dispatch({ type: 'SET_AUTH', payload: true });
+      dispatch({ type: 'SET_USER', payload: user });
+      router.push('/tabs/home', 'root', 'replace');
+    } catch (err) {
+      setError(extractErrorMessage(err));
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (

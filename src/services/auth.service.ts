@@ -31,6 +31,16 @@ export const authService = {
     return { token, user };
   },
 
+  async loginWithGoogle(idToken: string) {
+    const { data: envelope } = await api.post('/auth/google', { idToken }, { timeout: 45000 });
+    const { token, customer } = envelope.data;
+    const user = mapCustomerToUser(customer);
+
+    localStorage.setItem('medmeu_token', token);
+    localStorage.setItem('medmeu_user', JSON.stringify(user));
+    return { token, user };
+  },
+
   async register(payload: RegisterPayload) {
     const { data: envelope } = await api.post('/auth/register', {
       username: payload.username,

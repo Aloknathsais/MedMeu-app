@@ -107,7 +107,6 @@ const TabsLayout: React.FC = () => {
 };  
 
 const AppRoutes: React.FC = () => {
-  const { state } = useApp();
   return (
     <IonReactRouter>
       <IonRouterOutlet>

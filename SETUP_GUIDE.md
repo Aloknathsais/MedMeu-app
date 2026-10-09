@@ -69,6 +69,37 @@ Edit `src/services/api.ts` → change BASE_URL to your backend:
 const BASE_URL = 'https://your-api.medmeu.com/v1';
 ```
 
+## Google Sign-In (Android)
+
+1. In Google Cloud Console, configure the OAuth consent screen and create:
+   - A **Web application** OAuth client. Its client ID is the backend audience.
+   - An **Android** OAuth client with package name `com.medmeu.app` and the
+     SHA-1 signing certificate fingerprint for the build. For local debug builds,
+     run `.\gradlew signingReport` from the `android` directory and use the
+     `SHA1` value under the `debug` variant. Add a separate Android client for
+     the release signing certificate before publishing.
+2. If the consent screen is in testing mode, add the Google accounts used for
+   testing as test users.
+3. Put the **Web application client ID** in the frontend project's `.env`:
+   ```env
+   VITE_GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+   ```
+4. Put the same Web application client ID in the backend's `.env`:
+   ```env
+   GOOGLE_OAUTH_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+   ```
+5. Restart the backend, then rebuild/sync and reinstall the Android app:
+   ```bash
+   npm run build
+   npx cap sync android
+   ```
+
+The Android app sends Google's ID token to `POST /api/auth/google`. The backend
+verifies the token and its audience before issuing the app JWT. A verified Google
+email matching an existing WooCommerce customer signs into that account; otherwise
+a WooCommerce customer account is created automatically. No Google password is
+requested or stored.
+
 ## Build APK for Testing
 In Android Studio: Build → Build Bundle(s)/APK(s) → Build APK(s)
 APK location: `android/app/build/outputs/apk/debug/app-debug.apk`

@@ -19,7 +19,7 @@ import { mockTrustBadges } from '../../utils/mockData';
 import { productsService, UiProduct } from '../../services/products.service';
 import { categoriesService, UiCategory } from '../../services/categories.service';
 import { authService } from '../../services/auth.service';
-import { googleReviewsService, GoogleReview } from '../../services/googleReviews.service';
+import { googleReviewsService, GoogleReview, GoogleReviewsData } from '../../services/googleReviews.service';
 import { bannersService, Banner } from '../../services/banners.service';
 import Logo from '../../assets/logo.png';
 import './Home.css';
@@ -45,7 +45,7 @@ const HomePage: React.FC = () => {
   // Real Google reviews — replaces mockTestimonials. Separate
   // loading/error state so a failed fetch here never blocks the rest
   // of the home page from rendering.
-  const [googleReviews, setGoogleReviews] = useState<GoogleReview[]>([]);
+  const [googleReviewsData, setGoogleReviewsData] = useState<GoogleReviewsData | null>(null);
   const [googleReviewsLoading, setGoogleReviewsLoading] = useState(true);
 
   // Real banners — replaces mockBanners. Node-managed (see
@@ -78,7 +78,7 @@ const HomePage: React.FC = () => {
     googleReviewsService
       .get()
       .then((data) => {
-        if (!cancelled) setGoogleReviews(data.reviews);
+        if (!cancelled) setGoogleReviewsData(data);
       })
       .catch((err) => {
         console.error('Failed to load Google reviews', err);
@@ -453,13 +453,32 @@ const HomePage: React.FC = () => {
             )}
 
             {/* ── Real Google Reviews (via our own backend → Google Places API directly, not Trustindex — see googleReviews.service.js for why) ── */}
-            {!googleReviewsLoading && googleReviews.length > 0 && (
+            {!googleReviewsLoading && googleReviewsData && googleReviewsData.reviews.length > 0 && (
               <>
                 <div className="section-header">
                   <h2>What Our Customers Say About Us</h2>
+                  {googleReviewsData.googleMapsUrl && (
+                    <a
+                      className="google-reviews-link"
+                      href={googleReviewsData.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      See all reviews
+                    </a>
+                  )}
+                </div>
+                <div className="google-review-summary">
+                  {googleReviewsData.rating !== null && (
+                    <span className="google-rating-pill">
+                      <IonIcon icon={starSharp} color="warning" />
+                      {googleReviewsData.rating.toFixed(1)}
+                    </span>
+                  )}
+                  <span>{googleReviewsData.totalReviews.toLocaleString()} Google reviews</span>
                 </div>
                 <div className="testimonial-slider">
-                  {googleReviews.map((r, i) => (
+                  {googleReviewsData.reviews.map((r, i) => (
                     <GoogleReviewCard key={i} review={r} />
                   ))}
                 </div>
@@ -628,13 +647,19 @@ const GoogleReviewCard: React.FC<{ review: GoogleReview }> = ({ review }) => {
       </p>
       <div className="testimonial-author">
         {review.authorPhotoUrl ? (
-          <img src={review.authorPhotoUrl} alt="" className="author-avatar-img" />
+          <img src={review.authorPhotoUrl} alt="" className="author-avatar-img" referrerPolicy="no-referrer" />
         ) : (
-          <div className="author-avatar">{review.authorName.charAt(0)}</div>
+          <div className="author-avatar">{(review.authorName || 'G').charAt(0)}</div>
         )}
         <div>
-          <p className="author-name">{review.authorName}</p>
-          <p className="author-time">{review.relativeTime}</p>
+          {review.authorUrl ? (
+            <a className="author-name" href={review.authorUrl} target="_blank" rel="noopener noreferrer">
+              {review.authorName || 'Google user'}
+            </a>
+          ) : (
+            <p className="author-name">{review.authorName || 'Google user'}</p>
+          )}
+          {review.relativeTime && <p className="author-time">{review.relativeTime}</p>}
         </div>
       </div>
     </div>

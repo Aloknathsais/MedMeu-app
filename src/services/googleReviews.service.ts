@@ -1,12 +1,13 @@
 import api from './api';
 
 export interface GoogleReview {
-  authorName: string;
-  authorPhotoUrl: string;
-  rating: number;
+  authorName: string | null;
+  authorUrl: string | null;
+  authorPhotoUrl: string | null;
+  rating: number | null;
   text: string;
-  relativeTime: string;
-  time: number;
+  relativeTime: string | null;
+  time: number | null;
 }
 
 export interface GoogleReviewsData {

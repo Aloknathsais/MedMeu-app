@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     // androidScheme: 'https',                 // prod
-    url: 'http://192.168.1.26:5173/',   // dev
+    url: 'http://192.168.1.14:5173/',   // dev
     cleartext: true,
   },
   android: {
@@ -14,6 +14,14 @@ const config: CapacitorConfig = {
     backgroundColor: '#2171a8',
   },
   plugins: {
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      },
+    },
     SplashScreen: {
       launchShowDuration: 0,
     },
