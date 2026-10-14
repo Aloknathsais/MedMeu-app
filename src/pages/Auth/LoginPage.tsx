@@ -118,9 +118,9 @@ const LoginPage: React.FC = () => {
           </div>
 
           {/* Forgot Password */}
-          <div className="forgot-link" onClick={() => {}}>
+          {/* <div className="forgot-link" onClick={() => {}}>
             Forgot Password?
-          </div>
+          </div> */}
 
           {/* Error */}
           {error && (
