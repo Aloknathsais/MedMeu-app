@@ -2,6 +2,10 @@
 .auth-content {
   --background: linear-gradient(160deg, #ffffff 0%, #f4621d 100%);
 }
+.auth-login-content::part(scroll) {
+  display: flex;
+  flex-direction: column;
+}
 
 /* ── Top logo area ── */
 .auth-top {
@@ -44,6 +48,11 @@
 .register-card {
   min-height: auto;
   padding-bottom: 32px;
+}
+.auth-login-card {
+  flex: 1 0 auto;
+  min-height: 0;
+  padding-bottom: calc(40px + var(--ion-safe-area-bottom, 0px));
 }
 .auth-card h2 {
   font-size: 24px;

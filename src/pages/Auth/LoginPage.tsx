@@ -69,7 +69,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <IonPage>
-      <IonContent className="auth-content" fullscreen>
+      <IonContent className="auth-content auth-login-content" fullscreen>
         {/* Top gradient area with logo */}
         <div className="auth-top">
           <div className="auth-logo">
@@ -78,7 +78,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* White card */}
-        <div className="auth-card">
+        <div className="auth-card auth-login-card">
           <h2>Welcome Back</h2>
           <p className="auth-subtitle">Sign in to continue</p>
 
