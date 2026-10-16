@@ -3,7 +3,6 @@ import { User } from '../context/AppContext';
 import { mapCustomerToUser } from './customerMapper';
 
 export interface LoginPayload {
-  /** Sent to the backend as `email`. Only email lookups work today — see the note in LoginPage.tsx. */
   usernameOrEmail: string;
   password: string;
 }
@@ -20,7 +19,7 @@ export const authService = {
   async login(payload: LoginPayload) {
     // Backend wraps every response as { success, data: {...} } — unwrap it here.
     const { data: envelope } = await api.post('/auth/login', {
-      email: payload.usernameOrEmail,
+      identifier: payload.usernameOrEmail,
       password: payload.password,
     });
     const { token, customer } = envelope.data;

@@ -37,9 +37,6 @@ const LoginPage: React.FC = () => {
     if (!username || !password) { setError('Please fill all fields'); return; }
     setLoading(true); setError('');
     try {
-      // Backend login only supports email lookups today — if this field
-      // isn't a real email address the backend will reject it. See the
-      // note in authService.login for the "username or email" caveat.
       const { user } = await authService.login({ usernameOrEmail: username, password });
       dispatch({ type: 'SET_AUTH', payload: true });
       dispatch({ type: 'SET_USER', payload: user });

@@ -53,7 +53,10 @@ api.interceptors.response.use(
         { requestBody: err.config?.data, response: err.response?.data, message: err.message },
       );
     }
-    if (err.response?.status === 401) {
+    const isAuthRequest = /(?:^|\/)auth\/(?:login|google|register)(?:\/|$)/.test(
+      err.config?.url?.split('?')[0] || '',
+    );
+    if (err.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('medmeu_token');
       window.location.href = '/login';
     }
