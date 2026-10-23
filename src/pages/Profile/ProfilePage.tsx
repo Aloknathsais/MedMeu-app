@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonItem, IonLabel, IonIcon, IonButton, IonAvatar, IonList,
-  IonAlert,
+  IonAlert, IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   personOutline, locationOutline, heartOutline, helpCircleOutline,
@@ -37,6 +37,24 @@ const ProfilePage: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const handleRefresh = async (event: CustomEvent) => {
+    const [ordersResult, addressesResult, wishlistResult] = await Promise.allSettled([
+      ordersService.getMyOrderCount(),
+      addressesService.list(),
+      loadWishlist(),
+    ]);
+
+    if (ordersResult.status === 'fulfilled') setOrderCount(ordersResult.value);
+    else console.error('Failed to refresh order count', ordersResult.reason);
+    if (addressesResult.status === 'fulfilled') setAddressCount(addressesResult.value.length);
+    else console.error('Failed to refresh address count', addressesResult.reason);
+    if (wishlistResult.status === 'rejected') {
+      console.error('Failed to refresh wishlist count', wishlistResult.reason);
+    }
+
+    event.detail.complete();
+  };
+
   const user: User = state.user || { id: 'guest', name: 'Guest User', email: 'guest@medmeu.com', phone: '' };
 
   const handleLogout = () => {
@@ -60,6 +78,9 @@ const ProfilePage: React.FC = () => {
         <IonToolbar><IonTitle>Profile</IonTitle></IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
         {/* Profile Hero */}
         <div className="profile-hero">
           <div className="profile-avatar-wrap">

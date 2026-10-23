@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle, IonBackButton,
-  IonButtons, IonIcon, IonButton, IonSpinner, IonToast,
+  IonButtons, IonIcon, IonButton, IonSpinner, IonToast, IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   starSharp, heartOutline, heart, optionsOutline, closeOutline,
@@ -124,9 +124,9 @@ const ProductsPage: React.FC = () => {
   };
 
   /* ── Fetch products from the real backend ── */
-  const fetchProducts = useCallback(async (pageToFetch: number, append: boolean) => {
+  const fetchProducts = useCallback(async (pageToFetch: number, append: boolean, showLoading = true) => {
     const thisRequestId = ++requestIdRef.current;
-    if (append) setLoadingMore(true); else setLoading(true);
+    if (append) setLoadingMore(true); else if (showLoading) setLoading(true);
 
     const orderby =
       sort === 'price_asc' || sort === 'price_desc' ? 'price'
@@ -166,6 +166,20 @@ const ProductsPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sort, selectedCat, selectedSubCat, priceRange, inStockOnly]);
+
+  const handleRefresh = async (event: CustomEvent) => {
+    try {
+      await Promise.all([
+        fetchProducts(1, false, false),
+        categoriesService.getTree().then(setCategoryTree),
+        loadWishlist(),
+      ]);
+    } catch (err) {
+      console.error('Failed to refresh products', err);
+    } finally {
+      event.detail.complete();
+    }
+  };
 
   /* Re-fetch (from page 1) whenever a filter/sort/search/category changes — debounced. */
   useEffect(() => {
@@ -244,6 +258,9 @@ const ProductsPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
 
         {/* ── Category chips with inline subcategory tree (real WooCommerce hierarchy) ── */}
         <div className="cat-chips-section">

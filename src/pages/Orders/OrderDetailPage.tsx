@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonBackButton, IonButtons, IonIcon, IonButton, IonSpinner, IonToast,
+  IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   checkmarkCircle, cartOutline, carOutline,
@@ -106,6 +107,18 @@ const OrderDetailPage: React.FC = () => {
       .finally(() => setDownloadingInvoice(false));
   };
 
+  const handleRefresh = async (event: CustomEvent) => {
+    try {
+      const latestOrder = await ordersService.getById(id);
+      setOrder(latestOrder);
+      setNotFound(false);
+    } catch (err) {
+      console.error('Failed to refresh order', err);
+    } finally {
+      event.detail.complete();
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -150,6 +163,9 @@ const OrderDetailPage: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
+          <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+            <IonRefresherContent />
+          </IonRefresher>
           <div style={{ padding: 32, textAlign: 'center' }}>
             <div style={{ fontSize: 48 }}>📦</div>
             <p style={{ color: '#888', marginTop: 16 }}>Order not found</p>
@@ -179,6 +195,9 @@ const OrderDetailPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
 
         {/* ── Status hero banner ── */}
         <div className="od-status-hero" style={{ background: cfg.bg, borderColor: cfg.color + '33' }}>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
-  IonBackButton, IonButtons, IonIcon, IonToast, IonSpinner,
+  IonBackButton, IonButtons, IonIcon, IonToast, IonSpinner, IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   addOutline, homeOutline, businessOutline, locationSharp,
@@ -81,7 +81,8 @@ const AddressBookPage: React.FC = () => {
   const [toastMsg, setToastMsg] = useState('');
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
 
-  const fetchAddresses = useCallback(async () => {
+  const fetchAddresses = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const list = await addressesService.list();
       setAddresses(list.map(fromApi));
@@ -95,6 +96,14 @@ const AddressBookPage: React.FC = () => {
   }, []);
 
   useEffect(() => { fetchAddresses(); }, [fetchAddresses]);
+
+  const handleRefresh = async (event: CustomEvent) => {
+    try {
+      await fetchAddresses(false);
+    } finally {
+      event.detail.complete();
+    }
+  };
 
   const update = (field: keyof FormShape) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -247,6 +256,11 @@ const AddressBookPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        {viewMode === 'list' && (
+          <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+            <IonRefresherContent />
+          </IonRefresher>
+        )}
 
         {/* ════════ LIST VIEW ════════ */}
         {viewMode === 'list' && (
@@ -263,7 +277,7 @@ const AddressBookPage: React.FC = () => {
                 </div>
                 <h3>Couldn't load addresses</h3>
                 <p>Check your connection and try again.</p>
-                <button className="ab-btn-solid" onClick={fetchAddresses}>Retry</button>
+                <button className="ab-btn-solid" onClick={() => fetchAddresses()}>Retry</button>
               </div>
             ) : addresses.length === 0 ? (
               <div className="ab-empty">

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonButton, IonIcon, IonSpinner, IonToast,
-  IonButtons, IonBackButton,
+  IonButtons, IonBackButton, IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import { heart } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
@@ -24,17 +24,23 @@ const WishlistPage: React.FC = () => {
   // name/price/image/stock per item (see medmeu_app_wishlist_serialize()
   // in medmeu-app-wishlist-api.php), so there's no need to cross-reference
   // against a separate product list here.
-  const load = () => {
+  const load = async () => {
     setLoading(true);
     setError('');
-    wishlistService
-      .list()
-      .then((data) => setItems(data.items))
-      .catch((err) => {
-        console.error('Failed to load wishlist', err);
-        setError('Could not load your wishlist right now.');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const data = await wishlistService.list();
+      setItems(data.items);
+    } catch (err) {
+      console.error('Failed to load wishlist', err);
+      setError('Could not load your wishlist right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async (event: CustomEvent) => {
+    await load();
+    event.detail.complete();
   };
 
   useEffect(() => {
@@ -84,6 +90,9 @@ const WishlistPage: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '80px 24px', color: '#888' }}>
             <IonSpinner name="crescent" />

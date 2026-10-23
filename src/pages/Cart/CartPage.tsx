@@ -9,6 +9,8 @@ import {
   IonIcon,
   IonBackButton,
   IonButtons,
+  IonRefresher,
+  IonRefresherContent,
 } from "@ionic/react";
 import {
   trashOutline,
@@ -457,6 +459,31 @@ const CartPage: React.FC = () => {
     history.push("/tabs/orders");
   };
 
+  const handleRefresh = async (event: CustomEvent) => {
+    const [cartResult, addressResult] = await Promise.allSettled([
+      loadCart(),
+      addressesService.list(),
+    ]);
+
+    if (cartResult.status === "rejected") {
+      console.error("Failed to refresh cart", cartResult.reason);
+    }
+    if (addressResult.status === "fulfilled") {
+      const list = addressResult.value;
+      setAddresses(list);
+      setAddressesError("");
+      if (!list.some((address) => address.id === selectedAddressId)) {
+        const preferred = list.find((address) => address.isDefault) ?? list[0];
+        setSelectedAddressId(preferred?.id ?? "");
+      }
+    } else {
+      console.error("Failed to refresh addresses", addressResult.reason);
+      setAddressesError("Could not load your saved addresses.");
+    }
+
+    event.detail.complete();
+  };
+
   return (
     <IonPage>
       <IonHeader>
@@ -471,6 +498,9 @@ const CartPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
         {state.cartItems.length === 0 ? (
           <div className="cart-empty">
             <div className="cart-empty-icon-wrap">

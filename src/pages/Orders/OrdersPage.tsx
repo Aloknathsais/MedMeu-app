@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonButton, IonIcon, IonBackButton, IonButtons, IonSpinner, IonToast,
+  IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   checkmarkCircle, timeOutline, closeCircleOutline,
@@ -105,17 +106,23 @@ const OrdersPage: React.FC = () => {
       .finally(() => setDownloadingInvoice(null));
   };
 
-  const load = () => {
+  const load = async () => {
     setLoading(true);
     setError('');
-    ordersService
-      .list({ per_page: 50 }) // simple client-side filtering below; revisit with real pagination if order volume grows
-      .then((res) => setOrders(res.orders))
-      .catch((err) => {
-        console.error('Failed to load orders', err);
-        setError('Could not load your orders right now.');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await ordersService.list({ per_page: 50 });
+      setOrders(res.orders);
+    } catch (err) {
+      console.error('Failed to load orders', err);
+      setError('Could not load your orders right now.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRefresh = async (event: CustomEvent) => {
+    await load();
+    event.detail.complete();
   };
 
   useEffect(() => {
@@ -140,6 +147,9 @@ const OrdersPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
         <div className="order-filter-tabs">
           {([
             { key: 'all',       label: 'All' },

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonBackButton, IonButtons,
   IonButton, IonIcon, IonBadge, IonToast, IonSpinner,
+  IonRefresher, IonRefresherContent,
 } from '@ionic/react';
 import {
   heartOutline, heart, cartOutline, starSharp, starOutline, shareSocialOutline,
@@ -124,6 +125,29 @@ const ProductDetailPage: React.FC = () => {
     }
   };
 
+  const handleRefresh = async (event: CustomEvent) => {
+    const [productResult, reviewsResult] = await Promise.allSettled([
+      productsService.getById(id),
+      reviewsService.list(id),
+    ]);
+
+    if (productResult.status === 'fulfilled') {
+      setProduct(productResult.value);
+      setNotFound(false);
+    } else {
+      console.error('Failed to refresh product', productResult.reason);
+    }
+    if (reviewsResult.status === 'fulfilled') {
+      setReviews(reviewsResult.value);
+      setReviewsError('');
+    } else {
+      console.error('Failed to refresh reviews', reviewsResult.reason);
+      setReviewsError('Could not load reviews right now.');
+    }
+
+    event.detail.complete();
+  };
+
   if (loading) {
     return (
       <IonPage>
@@ -151,6 +175,9 @@ const ProductDetailPage: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent>
+          <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+            <IonRefresherContent />
+          </IonRefresher>
           <p style={{ padding: 24, textAlign: 'center', color: '#888' }}>Product not found</p>
         </IonContent>
       </IonPage>
@@ -258,6 +285,9 @@ const ProductDetailPage: React.FC = () => {
       </IonHeader>
 
       <IonContent fullscreen>
+        <IonRefresher slot="fixed" onIonRefresh={handleRefresh}>
+          <IonRefresherContent />
+        </IonRefresher>
 
         {/* ── Image Slider (real gallery — however many images WooCommerce actually has) ── */}
         <div className="img-slider-wrap">
