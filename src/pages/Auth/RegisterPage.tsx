@@ -84,85 +84,101 @@ const RegisterPage: React.FC = () => {
           <h2>Register</h2>
           <p className="auth-subtitle">Join thousands of healthcare professionals</p>
 
-          {/* Username */}
-          <div className="input-group">
-            <label className="input-label">Username <span className="required">*</span></label>
-            <div className="input-wrap">
-              <IonIcon icon={personOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type="text"
-                placeholder="Choose a username"
-                value={form.username}
-                onChange={update('username')}
-              />
+          <form
+            autoComplete="on"
+            onSubmit={event => {
+              event.preventDefault();
+              void handleRegister();
+            }}
+          >
+            {/* Username */}
+            <div className="input-group">
+              <label className="input-label">Username <span className="required">*</span></label>
+              <div className="input-wrap">
+                <IonIcon icon={personOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type="text"
+                  name="username"
+                  autoComplete="username"
+                  placeholder="Choose a username"
+                  value={form.username}
+                  onChange={update('username')}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Email */}
-          <div className="input-group">
-            <label className="input-label">Email Address <span className="required">*</span></label>
-            <div className="input-wrap">
-              <IonIcon icon={mailOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type="email"
-                placeholder="Enter your email"
-                value={form.email}
-                onChange={update('email')}
-              />
+            {/* Email */}
+            <div className="input-group">
+              <label className="input-label">Email Address <span className="required">*</span></label>
+              <div className="input-wrap">
+                <IonIcon icon={mailOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type="email"
+                  name="email"
+                  autoComplete="email"
+                  placeholder="Enter your email"
+                  value={form.email}
+                  onChange={update('email')}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Password */}
-          <div className="input-group">
-            <label className="input-label">Password <span className="required">*</span></label>
-            <div className="input-wrap">
-              <IonIcon icon={lockClosedOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type={showPass ? 'text' : 'password'}
-                placeholder="Create a password"
-                value={form.password}
-                onChange={update('password')}
-              />
-              <IonIcon
-                icon={showPass ? eyeOffOutline : eyeOutline}
-                className="input-icon-right"
-                onClick={() => setShowPass(!showPass)}
-              />
+            {/* Password */}
+            <div className="input-group">
+              <label className="input-label">Password <span className="required">*</span></label>
+              <div className="input-wrap">
+                <IonIcon icon={lockClosedOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type={showPass ? 'text' : 'password'}
+                  name="password"
+                  autoComplete="new-password"
+                  placeholder="Create a password"
+                  value={form.password}
+                  onChange={update('password')}
+                />
+                <IonIcon
+                  icon={showPass ? eyeOffOutline : eyeOutline}
+                  className="input-icon-right"
+                  onClick={() => setShowPass(!showPass)}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* License (optional) */}
-          <div className="input-group">
-            <label className="input-label">
-              Drug License / Clinical Establishment No. / GST No.
-              <span className="optional"> (optional)</span>
-            </label>
-            <div className="input-wrap">
-              <IonIcon icon={documentTextOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type="text"
-                placeholder="Enter license or GST number"
-                value={form.license}
-                onChange={update('license')}
-              />
+            {/* License (optional) */}
+            <div className="input-group">
+              <label className="input-label">
+                Drug License / Clinical Establishment No. / GST No.
+                <span className="optional"> (optional)</span>
+              </label>
+              <div className="input-wrap">
+                <IonIcon icon={documentTextOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type="text"
+                  name="license"
+                  autoComplete="off"
+                  placeholder="Enter license or GST number"
+                  value={form.license}
+                  onChange={update('license')}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Error */}
-          {error && (
-            <IonText color="danger">
-              <p className="error-text">⚠️ {error}</p>
-            </IonText>
-          )}
+            {/* Error */}
+            {error && (
+              <IonText color="danger">
+                <p className="error-text">⚠️ {error}</p>
+              </IonText>
+            )}
 
-          {/* Register Button */}
-          <button className="btn-primary" onClick={handleRegister} disabled={loading}>
-            {loading ? <IonSpinner name="crescent" style={{ color: 'white', width: 22, height: 22 }} /> : 'Create Account'}
-          </button>
+            {/* Register Button */}
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? <IonSpinner name="crescent" style={{ color: 'white', width: 22, height: 22 }} /> : 'Create Account'}
+            </button>
+          </form>
 
           {/* Privacy Policy */}
           <p className="privacy-text">

@@ -79,57 +79,69 @@ const LoginPage: React.FC = () => {
           <h2>Welcome Back</h2>
           <p className="auth-subtitle">Sign in to continue</p>
 
-          {/* Username / Email */}
-          <div className="input-group">
-            <label className="input-label">Username or Email Address</label>
-            <div className="input-wrap">
-              <IonIcon icon={personOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type="text"
-                placeholder="Enter username or email"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-              />
+          <form
+            autoComplete="on"
+            onSubmit={event => {
+              event.preventDefault();
+              void handleLogin();
+            }}
+          >
+            {/* Username / Email */}
+            <div className="input-group">
+              <label className="input-label">Username or Email Address</label>
+              <div className="input-wrap">
+                <IonIcon icon={personOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type="text"
+                  name="username"
+                  autoComplete="username"
+                  placeholder="Enter username or email"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Password */}
-          <div className="input-group">
-            <label className="input-label">Password</label>
-            <div className="input-wrap">
-              <IonIcon icon={lockClosedOutline} className="input-icon" />
-              <input
-                className="auth-field"
-                type={showPass ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-              />
-              <IonIcon
-                icon={showPass ? eyeOffOutline : eyeOutline}
-                className="input-icon-right"
-                onClick={() => setShowPass(!showPass)}
-              />
+            {/* Password */}
+            <div className="input-group">
+              <label className="input-label">Password</label>
+              <div className="input-wrap">
+                <IonIcon icon={lockClosedOutline} className="input-icon" />
+                <input
+                  className="auth-field"
+                  type={showPass ? 'text' : 'password'}
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                />
+                <IonIcon
+                  icon={showPass ? eyeOffOutline : eyeOutline}
+                  className="input-icon-right"
+                  onClick={() => setShowPass(!showPass)}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Forgot Password */}
-          {/* <div className="forgot-link" onClick={() => {}}>
+            {/* Forgot Password */}
+            {/* <div className="forgot-link" onClick={() => {}}>
             Forgot Password?
           </div> */}
 
-          {/* Error */}
-          {error && (
-            <IonText color="danger">
-              <p className="error-text">⚠️ {error}</p>
-            </IonText>
-          )}
+            {/* Error */}
+            {error && (
+              <IonText color="danger">
+                <p className="error-text">⚠️ {error}</p>
+              </IonText>
+            )}
 
-          {/* Login Button */}
-          <button className="btn-primary" onClick={handleLogin} disabled={loading}>
-            {loading ? <IonSpinner name="crescent" style={{ color: 'white', width: 22, height: 22 }} /> : 'Login'}
-          </button>
+            {/* Login Button */}
+            <button className="btn-primary" type="submit" disabled={loading}>
+              {loading ? <IonSpinner name="crescent" style={{ color: 'white', width: 22, height: 22 }} /> : 'Login'}
+            </button>
+          </form>
 
           {/* Divider */}
           <div className="auth-divider"><span>OR CONTINUE WITH</span></div>
