@@ -25,6 +25,7 @@ const ProductDetailPage: React.FC = () => {
   const [qty, setQty] = useState(1);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [showWishlistToast, setShowWishlistToast] = useState(false);
   const [activeTab, setActiveTab] = useState<'desc' | 'spec' | 'reviews'>('desc');
   const [activeImg, setActiveImg] = useState(0);
 
@@ -225,6 +226,17 @@ const ProductDetailPage: React.FC = () => {
     if (added) history.push('/tabs/cart');
   };
 
+  const toggleWishlist = async () => {
+    if (!product) return;
+    const wasWishlisted = state.wishlist.includes(product.id);
+    try {
+      await persistToggleWishlist(product.id);
+      if (!wasWishlisted) setShowWishlistToast(true);
+    } catch (err) {
+      console.error('Failed to update wishlist', err);
+    }
+  };
+
   return (
     <IonPage>
       <IonHeader>
@@ -232,7 +244,7 @@ const ProductDetailPage: React.FC = () => {
           <IonButtons slot="start"><IonBackButton color="dark" /></IonButtons>
           <IonButtons slot="end">
             <IonButton><IonIcon icon={shareSocialOutline} color="dark" /></IonButton>
-            <IonButton onClick={() => persistToggleWishlist(product.id).catch((err) => console.error('Failed to update wishlist', err))}>
+            <IonButton onClick={toggleWishlist}>
               <IonIcon icon={inWishlist ? heart : heartOutline} color={inWishlist ? 'danger' : 'dark'} />
             </IonButton>
             <IonButton onClick={() => history.push('/tabs/cart')}>
@@ -557,6 +569,14 @@ const ProductDetailPage: React.FC = () => {
         message={toastMsg}
         duration={1500}
         onDidDismiss={() => setShowToast(false)}
+        position="bottom"
+        color="success"
+      />
+      <IonToast
+        isOpen={showWishlistToast}
+        message="Added to wishlist!"
+        duration={1500}
+        onDidDismiss={() => setShowWishlistToast(false)}
         position="bottom"
         color="success"
       />

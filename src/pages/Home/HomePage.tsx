@@ -175,6 +175,7 @@ const HomePage: React.FC = () => {
 
   const [cartToastMsg, setCartToastMsg] = useState('');
   const [showCartToast, setShowCartToast] = useState(false);
+  const [showWishlistToast, setShowWishlistToast] = useState(false);
 
   const addToCart = (product: UiProduct) => {
     persistAddToCart({
@@ -203,10 +204,14 @@ const HomePage: React.FC = () => {
       });
   };
 
-  const toggleWishlist = (id: string) => {
-    persistToggleWishlist(id).catch((err) => {
+  const toggleWishlist = async (id: string) => {
+    const isWishlisted = state.wishlist.includes(id);
+    try {
+      await persistToggleWishlist(id);
+      if (!isWishlisted) setShowWishlistToast(true);
+    } catch (err) {
       console.error('Failed to update wishlist', err);
-    });
+    }
   };
 
   const goToBannerLink = (link: string) => {
@@ -530,6 +535,14 @@ const HomePage: React.FC = () => {
         onDidDismiss={() => setShowCartToast(false)}
         position="bottom"
         color={cartToastMsg === 'Added to cart!' ? 'success' : 'danger'}
+      />
+      <IonToast
+        isOpen={showWishlistToast}
+        message="Added to wishlist!"
+        duration={1500}
+        onDidDismiss={() => setShowWishlistToast(false)}
+        position="bottom"
+        color="success"
       />
     </IonPage>
   );
