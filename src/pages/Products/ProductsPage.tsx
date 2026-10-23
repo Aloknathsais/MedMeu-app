@@ -86,6 +86,7 @@ const ProductsPage: React.FC = () => {
 
   const [cartToastMsg, setCartToastMsg] = useState('');
   const [showCartToast, setShowCartToast] = useState(false);
+  const [showWishlistToast, setShowWishlistToast] = useState(false);
 
   const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
@@ -105,11 +106,15 @@ const ProductsPage: React.FC = () => {
       });
   };
 
-  const toggleWishlist = (id: string, e: any) => {
+  const toggleWishlist = async (id: string, e: any) => {
     e.stopPropagation();
-    persistToggleWishlist(id).catch((err) => {
+    const isWishlisted = state.wishlist.includes(id);
+    try {
+      await persistToggleWishlist(id);
+      if (!isWishlisted) setShowWishlistToast(true);
+    } catch (err) {
       console.error('Failed to update wishlist', err);
-    });
+    }
   };
 
   const resetFilters = () => {
@@ -369,7 +374,7 @@ const ProductsPage: React.FC = () => {
                 <div className="grid-img-wrap">
                   <img src={product.image} alt={product.name} loading="lazy" />
                   {product.discount > 0 && <span className="grid-discount">{product.discount}% OFF</span>}
-                  <div className="grid-wishlist" onClick={e => toggleWishlist(product.id, e)}>
+                  <div className="grid-wishlist" onClick={e => void toggleWishlist(product.id, e)}>
                     <IonIcon icon={state.wishlist.includes(product.id) ? heart : heartOutline}
                       color={state.wishlist.includes(product.id) ? 'danger' : 'medium'} />
                   </div>
@@ -416,7 +421,7 @@ const ProductsPage: React.FC = () => {
                     <span className="list-oos">Out of Stock</span>
                   )}
                 </div>
-                <div className="list-wishlist" onClick={e => toggleWishlist(product.id, e)}>
+                <div className="list-wishlist" onClick={e => void toggleWishlist(product.id, e)}>
                   <IonIcon icon={state.wishlist.includes(product.id) ? heart : heartOutline}
                     color={state.wishlist.includes(product.id) ? 'danger' : 'medium'} />
                 </div>
@@ -428,7 +433,7 @@ const ProductsPage: React.FC = () => {
         {/* ── Load more (real pagination) ── */}
         {!loading && !loadError && page < totalPages && minDiscount === 0 && (
           <div style={{ textAlign: 'center', padding: '16px' }}>
-            <IonButton fill="outline" onClick={loadMore} disabled={loadingMore}>
+            <IonButton className="load-more-button" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? <IonSpinner name="crescent" /> : `Load More (${total - products.length} remaining)`}
             </IonButton>
           </div>
@@ -511,6 +516,14 @@ const ProductsPage: React.FC = () => {
         onDidDismiss={() => setShowCartToast(false)}
         position="bottom"
         color={cartToastMsg === 'Added to cart!' ? 'success' : 'danger'}
+      />
+      <IonToast
+        isOpen={showWishlistToast}
+        message="Added to wishlist!"
+        duration={1500}
+        onDidDismiss={() => setShowWishlistToast(false)}
+        position="bottom"
+        color="success"
       />
     </IonPage>
   );

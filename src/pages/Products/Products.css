@@ -87,6 +87,7 @@
 }
 
 .result-count { padding: 10px 16px 4px; color: #888; font-size: 12.5px; margin: 0; }
+.load-more-button { --background: var(--medmeu-blue); --color: #fff; }
 
 /* ══════════ Grid view ══════════ */
 .products-grid-view {
