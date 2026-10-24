@@ -5,8 +5,8 @@ const config: CapacitorConfig = {
   appName: 'Medmeu',
   webDir: 'dist',
   server: {
-    // androidScheme: 'https',                 // prod
-    url: 'http://192.168.1.14:5173/',   // dev
+    androidScheme: 'https',                 // prod
+    // url: 'http://192.168.1.14:5173/',   // dev
     cleartext: true,
   },
   android: {
