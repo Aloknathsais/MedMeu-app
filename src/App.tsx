@@ -31,8 +31,6 @@ import AddressBookPage from './pages/Profile/AddressBook/AddressBookPage';
 import NotificationsPage from './pages/Profile/Notifications/NotificationsPage';
 import NotificationSettings from './pages/Profile/Notifications/NotificationSettings';
 import PrivacySecurityPage from './pages/Profile/PrivacySecurity/PrivacySecurityPage';
-import ChangePasswordPage from './pages/Profile/PrivacySecurity/ChangePasswordPage';
-import ActiveSessionsPage from './pages/Profile/PrivacySecurity/ActiveSessionsPage';
 
 import '@ionic/react/css/core.css';
 import '@ionic/react/css/normalize.css';
@@ -124,8 +122,8 @@ const AppRoutes: React.FC = () => {
         <ProtectedRoute exact path="/notifications" component={NotificationsPage} />
         <ProtectedRoute exact path="/notifications/settings" component={NotificationSettings} />
         <ProtectedRoute exact path="/privacy" component={PrivacySecurityPage} />
-        <ProtectedRoute exact path="/privacy/change-password" component={ChangePasswordPage} />
-        <ProtectedRoute exact path="/privacy/sessions" component={ActiveSessionsPage} />
+        <ProtectedRoute exact path="/privacy/change-password" component={PrivacySecurityPage} />
+        <ProtectedRoute exact path="/privacy/sessions" component={PrivacySecurityPage} />
         <ProtectedRoute exact path="/profile/help-support" component={HelpSupportPage} />
 
         <ProtectedRoute path="/tabs" component={TabsLayout} />
