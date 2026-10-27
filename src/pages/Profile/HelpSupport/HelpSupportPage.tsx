@@ -7,12 +7,12 @@ import {
   searchOutline, chevronDown, callOutline, mailOutline,
   logoWhatsapp, timeOutline, helpBuoyOutline, sendOutline,
   bagHandleOutline, cardOutline, personCircleOutline,
-  medkitOutline, appsOutline, closeCircle,
+  appsOutline, closeCircle,
 } from 'ionicons/icons';
 import './HelpSupport.css';
 
 /* ── Types ── */
-type FaqCategory = 'all' | 'orders' | 'payments' | 'account' | 'prescriptions';
+type FaqCategory = 'all' | 'orders' | 'delivery' | 'payments' | 'account';
 
 interface Faq {
   id: string;
@@ -26,27 +26,32 @@ const FAQS: Faq[] = [
   {
     id: 'f1', category: 'orders',
     question: 'How do I track my order?',
-    answer: 'Go to Profile > Orders (or the Orders tab) and open the order you want to track. You\u2019ll see live status updates from confirmation to delivery.',
+    answer: 'Open the Orders tab and select an order to see its current status and details. Live courier tracking and delivery-stage updates are not currently available in the app.',
   },
   {
     id: 'f2', category: 'orders',
     question: 'Can I cancel an order after placing it?',
-    answer: 'Yes, orders can be cancelled free of charge as long as they haven\u2019t been shipped yet. Open the order details and tap "Cancel Order".',
+    answer: 'You can cancel an order while the Cancel Order option is available on its order details page. Orders that are no longer eligible cannot be cancelled in the app.',
   },
   {
-    id: 'f3', category: 'orders',
-    question: 'What are the delivery charges?',
-    answer: 'Delivery is free on orders above \u20b9499. Below that, a flat \u20b939 delivery fee applies, shown at checkout before you pay.',
+    id: 'f3', category: 'delivery',
+    question: 'How are delivery charges calculated?',
+    answer: 'Delivery charges are calculated based on the total weight of the items in your cart. The applicable charge is shown at checkout before you place your order; the app does not currently offer a free-delivery threshold.',
+  },
+  {
+    id: 'f11', category: 'delivery',
+    question: 'Is there a minimum order value?',
+    answer: 'The current minimum order value is ₹2,000. Your cart will show how much more is needed before you can place the order.',
   },
   {
     id: 'f4', category: 'payments',
     question: 'What payment methods are accepted?',
-    answer: 'We accept UPI, all major debit/credit cards, net banking, and Cash on Delivery for eligible orders.',
+    answer: 'Cash on Delivery is currently the only payment method enabled in the app. UPI/net banking and credit/debit card payments are not available yet.',
   },
   {
     id: 'f5', category: 'payments',
-    question: 'My payment failed but money was deducted. What now?',
-    answer: 'Failed payments are auto-refunded to your original payment method within 5-7 business days. If it takes longer, reach out via the options below.',
+    question: 'I have a payment or refund question. What should I do?',
+    answer: 'The app currently supports Cash on Delivery only, so it does not process online payments or automatic online-payment refunds. If you see a payment deduction related to an order, contact support with your order number and payment reference. Never share your password, PIN, or OTP.',
   },
   {
     id: 'f6', category: 'account',
@@ -56,31 +61,26 @@ const FAQS: Faq[] = [
   {
     id: 'f7', category: 'account',
     question: 'How do I delete my account?',
-    answer: 'Go to Profile > Privacy & Security > Delete Account. This permanently removes your data and can\u2019t be undone.',
+    answer: 'Account deletion is not currently available in the app. Contact support to request help with your account.',
   },
   {
-    id: 'f8', category: 'prescriptions',
-    question: 'How do I order prescription medicines?',
-    answer: 'Search for the medicine, add it to cart, and upload a clear photo of your prescription at checkout. Our pharmacist verifies it before dispatch.',
-  },
-  {
-    id: 'f9', category: 'prescriptions',
-    question: 'Is my prescription data kept private?',
-    answer: 'Yes. Prescriptions are encrypted, viewed only by our licensed pharmacists for verification, and never shared with third parties.',
+    id: 'f8', category: 'account',
+    question: 'Can I upload a prescription in the app?',
+    answer: 'Prescription upload and verification are not currently available in the app. Contact support if you need help with a product that requires a prescription.',
   },
   {
     id: 'f10', category: 'orders',
     question: 'What if an item in my order is missing or damaged?',
-    answer: 'Report it within 48 hours of delivery from the order details page. We\u2019ll arrange a free replacement or refund, whichever you prefer.',
+    answer: 'Contact support as soon as possible and include your order number and details of the issue. The app does not currently provide a dedicated missing- or damaged-item report form.',
   },
 ];
 
 const CATEGORY_TABS: { key: FaqCategory; label: string; icon: any }[] = [
   { key: 'all', label: 'All', icon: appsOutline },
   { key: 'orders', label: 'Orders', icon: bagHandleOutline },
+  { key: 'delivery', label: 'Delivery', icon: bagHandleOutline },
   { key: 'payments', label: 'Payments', icon: cardOutline },
   { key: 'account', label: 'Account', icon: personCircleOutline },
-  { key: 'prescriptions', label: 'Prescriptions', icon: medkitOutline },
 ];
 
 const HelpSupportPage: React.FC = () => {
@@ -220,7 +220,7 @@ const HelpSupportPage: React.FC = () => {
         </div>
 
         {/* ── Raise a ticket ── */}
-        <div className="hs-ticket-section">
+        {/* <div className="hs-ticket-section">
           {!showTicketForm ? (
             <button className="hs-raise-ticket-btn" onClick={() => setShowTicketForm(true)}>
               <IonIcon icon={helpBuoyOutline} />
@@ -263,7 +263,7 @@ const HelpSupportPage: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         <div style={{ height: 32 }} />
       </IonContent>
