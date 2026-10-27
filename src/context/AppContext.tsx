@@ -57,6 +57,7 @@ interface AppState {
 type Action =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_AUTH'; payload: boolean }
+  | { type: 'LOGOUT' }
   | { type: 'ADD_TO_CART'; payload: CartItem }
   | { type: 'REMOVE_FROM_CART'; payload: string }
   | { type: 'UPDATE_CART_QTY'; payload: { id: string; quantity: number } }
@@ -93,6 +94,15 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_USER': return { ...state, user: action.payload };
     case 'SET_AUTH': return { ...state, isAuthenticated: action.payload };
+    case 'LOGOUT':
+      return {
+        ...state,
+        user: null,
+        isAuthenticated: false,
+        cartItems: [],
+        wishlist: [],
+        cartCount: 0,
+      };
     case 'ADD_TO_CART': {
       // Kept for compatibility, but no longer the recommended path — see
       // addToCart() below, which persists to the backend and then

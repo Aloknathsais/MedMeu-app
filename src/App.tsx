@@ -52,10 +52,10 @@ const TabsLayout: React.FC = () => {
       <IonPage id="main-content">
         <IonTabs>
           <IonRouterOutlet>
-            <Route exact path="/tabs/home"     component={HomePage} />
-            <Route exact path="/tabs/products" component={ProductsPage} />
+            <ProtectedRoute exact path="/tabs/home" component={HomePage} />
+            <ProtectedRoute exact path="/tabs/products" component={ProductsPage} />
             <Route exact path="/tabs/cart"     component={CartPage} />
-            {/* Orders and Profile require login — browsing home/products/cart doesn't */}
+            {/* Product browsing, orders, and profile require login; Home and Cart remain public. */}
             <ProtectedRoute exact path="/tabs/orders"  component={OrdersPage} />
             <ProtectedRoute exact path="/tabs/profile" component={ProfilePage} />
             <Redirect exact from="/tabs" to="/tabs/home" />
@@ -128,7 +128,7 @@ const AppRoutes: React.FC = () => {
         <ProtectedRoute exact path="/privacy/sessions" component={ActiveSessionsPage} />
         <ProtectedRoute exact path="/profile/help-support" component={HelpSupportPage} />
 
-        <Route path="/tabs"            component={TabsLayout} />
+        <ProtectedRoute path="/tabs" component={TabsLayout} />
         <Route exact path="/">
           <Redirect to="/splash" />
         </Route>
@@ -138,27 +138,36 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const handler = CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      if (canGoBack) {
-        window.history.back();
-      } else {
-        CapacitorApp.exitApp();
-      }
-    });
+  return (
+    <AppProvider>
+      <IonApp>
+        <NativeBackButtonHandler />
+        <AppRoutes />
+      </IonApp>
+    </AppProvider>
+  );
+};
 
-    return () => {
-      handler.then(h => h.remove());
+const NativeBackButtonHandler: React.FC = () => {
+  useEffect(() => {
+    const onIonBackButton = (ev: Event) => {
+      (ev as CustomEvent).detail.register(100, (processNextHandler: () => void) => {
+        const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const exitScreens = ['/login', '/splash', '/tabs/home'];
+
+        if (exitScreens.includes(currentPath)) {
+          CapacitorApp.exitApp();
+          return;
+        }
+        processNextHandler();
+      });
     };
+
+    document.addEventListener('ionBackButton', onIonBackButton);
+    return () => document.removeEventListener('ionBackButton', onIonBackButton);
   }, []);
 
-  return(
-  <AppProvider>
-    <IonApp>
-      <AppRoutes />
-    </IonApp>
-  </AppProvider>
-
-)};
+  return null;
+};
 
 export default App;

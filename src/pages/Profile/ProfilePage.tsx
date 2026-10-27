@@ -9,6 +9,7 @@ import {
   chevronForward, logOutOutline, notificationsOutline, shieldOutline, starOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
+import { useIonRouter } from '@ionic/react';
 import { useApp, User } from '../../context/AppContext';
 import { authService } from '../../services/auth.service';
 import { ordersService } from '../../services/orders.service';
@@ -17,7 +18,8 @@ import './Profile.css';
 
 const ProfilePage: React.FC = () => {
   const history = useHistory();
-  const { state, loadWishlist } = useApp();
+  const router = useIonRouter();
+  const { state, dispatch, loadWishlist } = useApp();
   const [showLogout, setShowLogout] = useState(false);
 
   // Real counts — were hardcoded to 3 and 2 before.
@@ -58,8 +60,9 @@ const ProfilePage: React.FC = () => {
   const user: User = state.user || { id: 'guest', name: 'Guest User', email: 'guest@medmeu.com', phone: '' };
 
   const handleLogout = () => {
-    authService.logout();
-    window.location.replace('/login');
+    authService.logout();                 // clears the token + cached user
+    dispatch({ type: 'LOGOUT' });
+    window.location.replace('/login');    // fresh router, no stale outlets
   };
 
   const menuItems = [

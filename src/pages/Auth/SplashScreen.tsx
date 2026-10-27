@@ -11,7 +11,8 @@ const SplashScreen: React.FC = () => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push(state.isAuthenticated ? '/tabs/home' : '/login', 'root', 'replace');
+      const hasToken = !!localStorage.getItem('medmeu_token');
+      router.push(hasToken ? '/tabs/home' : '/login', 'root', 'replace');
     }, 2400);
     return () => clearTimeout(timer);
   }, []);

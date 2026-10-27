@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { isAxiosError } from 'axios';
 import {
   IonPage, IonContent, IonSpinner, IonIcon, IonText,
+  useIonRouter, useIonViewDidEnter, useIonViewWillLeave,
 } from '@ionic/react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { useHistory } from 'react-router-dom';
-import { useIonRouter } from '@ionic/react';
 import { eyeOutline, eyeOffOutline, lockClosedOutline, personOutline } from 'ionicons/icons';
 import { useApp } from '../../context/AppContext';
 import { authService } from '../../services/auth.service';
@@ -22,6 +23,20 @@ function extractErrorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Invalid credentials. Please try again.';
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Drop focus from the active input and give Android's autofill framework a
+ * moment to see the form submit and offer "Save password?" before this page
+ * unmounts. Must run BEFORE dispatching auth state / navigating.
+ */
+async function letAutofillCommit() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+  await delay(600);
+}
+
 const LoginPage: React.FC = () => {
   const history = useHistory();
   const router = useIonRouter();
@@ -33,11 +48,36 @@ const LoginPage: React.FC = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Exit the app on hardware back while this screen is visible.
+  // Priority 1000 beats the router (0) and overlays/menus (~99-100),
+  // and not calling processNextHandler means Ionic never navigates back.
+  const backListenerRef = useRef<((ev: Event) => void) | null>(null);
+  
+  useIonViewDidEnter(() => {
+    const listener = (ev: Event) => {
+      (ev as CustomEvent).detail.register(1000, () => {
+        CapacitorApp.exitApp();
+      });
+    };
+    backListenerRef.current = listener;
+    document.addEventListener('ionBackButton', listener);
+  });
+  
+  useIonViewWillLeave(() => {
+    if (backListenerRef.current) {
+      document.removeEventListener('ionBackButton', backListenerRef.current);
+      backListenerRef.current = null;
+    }
+  });
+
   const handleLogin = async () => {
     if (!username || !password) { setError('Please fill all fields'); return; }
     setLoading(true); setError('');
     try {
       const { user } = await authService.login({ usernameOrEmail: username, password });
+
+      await letAutofillCommit();
+
       dispatch({ type: 'SET_AUTH', payload: true });
       dispatch({ type: 'SET_USER', payload: user });
       router.push('/tabs/home', 'root', 'replace');
@@ -80,6 +120,9 @@ const LoginPage: React.FC = () => {
           <p className="auth-subtitle">Sign in to continue</p>
 
           <form
+            id="login-form"
+            method="post"
+            action="#"
             autoComplete="on"
             onSubmit={event => {
               event.preventDefault();
@@ -88,14 +131,21 @@ const LoginPage: React.FC = () => {
           >
             {/* Username / Email */}
             <div className="input-group">
-              <label className="input-label">Username or Email Address</label>
+              <label className="input-label" htmlFor="login-username">
+                Username or Email Address
+              </label>
               <div className="input-wrap">
                 <IonIcon icon={personOutline} className="input-icon" />
                 <input
+                  id="login-username"
                   className="auth-field"
                   type="text"
                   name="username"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="email"
                   placeholder="Enter username or email"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
@@ -105,14 +155,18 @@ const LoginPage: React.FC = () => {
 
             {/* Password */}
             <div className="input-group">
-              <label className="input-label">Password</label>
+              <label className="input-label" htmlFor="login-password">Password</label>
               <div className="input-wrap">
                 <IonIcon icon={lockClosedOutline} className="input-icon" />
                 <input
+                  id="login-password"
                   className="auth-field"
                   type={showPass ? 'text' : 'password'}
                   name="password"
                   autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="Enter your password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
@@ -124,11 +178,6 @@ const LoginPage: React.FC = () => {
                 />
               </div>
             </div>
-
-            {/* Forgot Password */}
-            {/* <div className="forgot-link" onClick={() => {}}>
-            Forgot Password?
-          </div> */}
 
             {/* Error */}
             {error && (
