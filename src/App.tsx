@@ -151,7 +151,7 @@ const App: React.FC = () => {
 const NativeBackButtonHandler: React.FC = () => {
   useEffect(() => {
     const onIonBackButton = (ev: Event) => {
-      (ev as CustomEvent).detail.register(100, (processNextHandler: () => void) => {
+      (ev as CustomEvent).detail.register(50, (processNextHandler: () => void) => {
         const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
         const exitScreens = ['/login', '/splash', '/tabs/home'];
 

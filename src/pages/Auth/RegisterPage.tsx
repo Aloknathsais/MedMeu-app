@@ -218,7 +218,7 @@ const RegisterPage: React.FC = () => {
           <p className="privacy-text">
             Your personal data will be used to support your experience throughout this application, to manage
             access to your account, and for other purposes described in our{' '}
-            <span className="privacy-link" onClick={() => window.open('https://medmeu.com/my-account/', '_blank')}>
+            <span className="privacy-link" onClick={() => window.open('https://medmeu.com/privacy-policy/', '_blank')}>
               privacy policy
             </span>.
           </p>
