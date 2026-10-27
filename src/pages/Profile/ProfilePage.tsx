@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar, IonTitle,
   IonItem, IonLabel, IonIcon, IonButton, IonAvatar, IonList,
   IonAlert, IonRefresher, IonRefresherContent,
+  useIonViewWillEnter,
 } from '@ionic/react';
 import {
   personOutline, locationOutline, heartOutline, helpCircleOutline,
   chevronForward, logOutOutline, notificationsOutline, shieldOutline, starOutline,
 } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
-import { useIonRouter } from '@ionic/react';
 import { useApp, User } from '../../context/AppContext';
 import { authService } from '../../services/auth.service';
 import { ordersService } from '../../services/orders.service';
-import { addressesService } from '../../services/addresses.service';
+import {
+  ADDRESS_BOOK_CHANGED_EVENT,
+  addressesService,
+} from '../../services/addresses.service';
 import './Profile.css';
 
 const ProfilePage: React.FC = () => {
   const history = useHistory();
-  const router = useIonRouter();
   const { state, dispatch, loadWishlist } = useApp();
   const [showLogout, setShowLogout] = useState(false);
 
@@ -26,20 +28,7 @@ const ProfilePage: React.FC = () => {
   const [orderCount, setOrderCount] = useState<number | null>(null);
   const [addressCount, setAddressCount] = useState<number | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    ordersService.getMyOrderCount()
-      .then(count => { if (!cancelled) setOrderCount(count); })
-      .catch(err => console.error('Failed to load order count', err));
-    addressesService.list()
-      .then(addresses => { if (!cancelled) setAddressCount(addresses.length); })
-      .catch(err => console.error('Failed to load address count', err));
-    loadWishlist()
-      .catch(err => console.error('Failed to load wishlist count', err));
-    return () => { cancelled = true; };
-  }, []);
-
-  const handleRefresh = async (event: CustomEvent) => {
+  const refreshProfileSummary = async () => {
     const [ordersResult, addressesResult, wishlistResult] = await Promise.allSettled([
       ordersService.getMyOrderCount(),
       addressesService.list(),
@@ -53,8 +42,29 @@ const ProfilePage: React.FC = () => {
     if (wishlistResult.status === 'rejected') {
       console.error('Failed to refresh wishlist count', wishlistResult.reason);
     }
+  };
 
-    event.detail.complete();
+  useIonViewWillEnter(() => {
+    void refreshProfileSummary();
+  });
+
+  useEffect(() => {
+    const refreshAddressCount = () => {
+      addressesService.list()
+        .then(addresses => setAddressCount(addresses.length))
+        .catch(err => console.error('Failed to refresh address count', err));
+    };
+
+    window.addEventListener(ADDRESS_BOOK_CHANGED_EVENT, refreshAddressCount);
+    return () => window.removeEventListener(ADDRESS_BOOK_CHANGED_EVENT, refreshAddressCount);
+  }, []);
+
+  const handleRefresh = async (event: CustomEvent) => {
+    try {
+      await refreshProfileSummary();
+    } finally {
+      event.detail.complete();
+    }
   };
 
   const user: User = state.user || { id: 'guest', name: 'Guest User', email: 'guest@medmeu.com', phone: '' };

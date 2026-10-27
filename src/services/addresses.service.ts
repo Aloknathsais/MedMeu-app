@@ -1,5 +1,7 @@
 import api from './api';
 
+export const ADDRESS_BOOK_CHANGED_EVENT = 'medmeu:address-book-changed';
+
 export interface Address {
   id: string;
   /** Backend field name is `label` (e.g. "Home"/"Office"/"Other") — matches the form's "tag" concept. */

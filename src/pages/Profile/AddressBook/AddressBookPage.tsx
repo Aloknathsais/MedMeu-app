@@ -8,7 +8,11 @@ import {
   pencilOutline, trashBinOutline, checkmarkCircle,
   locationOutline, warningOutline,
 } from 'ionicons/icons';
-import { addressesService, Address as ApiAddress } from '../../../services/addresses.service';
+import {
+  ADDRESS_BOOK_CHANGED_EVENT,
+  addressesService,
+  Address as ApiAddress,
+} from '../../../services/addresses.service';
 import './AddressBook.css';
 
 /* ── Types ── */
@@ -172,6 +176,7 @@ const AddressBookPage: React.FC = () => {
         setToastMsg('Address updated successfully!');
       }
       await fetchAddresses();
+      window.dispatchEvent(new Event(ADDRESS_BOOK_CHANGED_EVENT));
       setToastColor('success');
       setShowToast(true);
       setViewMode('list');
@@ -190,6 +195,7 @@ const AddressBookPage: React.FC = () => {
     try {
       await addressesService.remove(id);
       await fetchAddresses();
+      window.dispatchEvent(new Event(ADDRESS_BOOK_CHANGED_EVENT));
       setDeleteConfirmId(null);
       setToastMsg('Address removed.');
       setToastColor('danger');
