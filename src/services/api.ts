@@ -11,7 +11,7 @@ const isDev = !!(import.meta as any).env?.DEV;
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
 
