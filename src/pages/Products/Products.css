@@ -12,7 +12,7 @@
   width: calc(100% - 24px);
 }
 .products-search-icon { font-size: 18px; color: var(--medmeu-blue); margin-right: 8px; }
-.products-search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; font-family: inherit; }
+.products-search-input { flex: 1; border: none; outline: none; background: transparent; color: #000; font-size: 14px; font-family: inherit; }
 .products-search-clear { font-size: 20px; color: #999; cursor: pointer; }
 
 /* ══════════ Category chips ══════════ */
@@ -88,6 +88,7 @@
 
 .result-count { padding: 10px 16px 4px; color: #888; font-size: 12.5px; margin: 0; }
 .load-more-button { --background: var(--medmeu-blue); --color: #fff; }
+.clear-filters-button { --background: var(--medmeu-blue); --color: #fff; --border-color: var(--medmeu-blue); }
 
 /* ══════════ Grid view ══════════ */
 .products-grid-view {
@@ -735,7 +736,7 @@
   width: calc(100% - 24px);
 }
 .products-search-icon { font-size: 18px; color: var(--medmeu-blue); margin-right: 8px; }
-.products-search-input { flex: 1; border: none; outline: none; background: transparent; font-size: 14px; font-family: inherit; }
+.products-search-input { flex: 1; border: none; outline: none; background: transparent; color: #000; font-size: 14px; font-family: inherit; }
 .products-search-clear { font-size: 20px; color: #999; cursor: pointer; }
 
 /* ══════════ Category chips ══════════ */

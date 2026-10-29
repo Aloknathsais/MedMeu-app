@@ -384,7 +384,14 @@ const ProductsPage: React.FC = () => {
             <span>🔍</span>
             <h3>No products found</h3>
             <p>Try adjusting filters or search terms</p>
-            <IonButton size="small" fill="outline" onClick={resetFilters}>Clear all filters</IonButton>
+            <IonButton
+              className="clear-filters-button"
+              size="small"
+              fill="solid"
+              onClick={resetFilters}
+            >
+              Clear all filters
+            </IonButton>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="products-grid-view">
