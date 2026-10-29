@@ -270,7 +270,7 @@ const ProductDetailPage: React.FC = () => {
         <IonToolbar className="detail-toolbar">
           <IonButtons slot="start"><IonBackButton color="dark" /></IonButtons>
           <IonButtons slot="end">
-            <IonButton><IonIcon icon={shareSocialOutline} color="dark" /></IonButton>
+            {/* <IonButton><IonIcon icon={shareSocialOutline} color="dark" /></IonButton> */}
             <IonButton onClick={toggleWishlist}>
               <IonIcon icon={inWishlist ? heart : heartOutline} color={inWishlist ? 'danger' : 'dark'} />
             </IonButton>
@@ -589,9 +589,9 @@ const ProductDetailPage: React.FC = () => {
           <IonIcon icon={cartOutline} slot="start" />
           Add to Cart
         </IonButton>
-        <IonButton expand="block" className="cta-buy" onClick={buyNow} disabled={!product.inStock}>
+        {/* <IonButton expand="block" className="cta-buy" onClick={buyNow} disabled={!product.inStock}>
           Buy Now
-        </IonButton>
+        </IonButton> */}
       </div>
 
       <IonToast
