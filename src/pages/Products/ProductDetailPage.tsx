@@ -18,6 +18,7 @@ import {
   getTierUnitPrice,
 } from '../../utils/quantityPricing';
 import './Products.css';
+import ProductDescription from '../../components/ProductDescription';
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -439,7 +440,7 @@ const ProductDetailPage: React.FC = () => {
             product.descriptionHtml ? (
               // Content comes from your own WooCommerce product editor (trusted
               // first-party source), not user input — safe to render as HTML.
-              <div className="detail-desc" dangerouslySetInnerHTML={{ __html: product.descriptionHtml }} />
+              <ProductDescription html={product.descriptionHtml} />
             ) : (
               <p className="detail-desc">{product.shortDescription || 'No description available.'}</p>
             )

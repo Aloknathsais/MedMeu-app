@@ -1,0 +1,79 @@
+.product-desc {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #444;
+  overflow-wrap: anywhere;
+  overflow: hidden;            /* nothing may push the page sideways */
+}
+.product-desc * {
+  max-width: 100%;
+  box-sizing: border-box;
+  float: none !important;
+}
+
+/* Spacing and typography */
+.product-desc p { margin: 0 0 12px; }
+.product-desc h1, .product-desc h2, .product-desc h3, .product-desc h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1.35;
+  margin: 18px 0 8px;
+}
+.product-desc ul, .product-desc ol { margin: 0 0 12px; padding-left: 20px; }
+.product-desc li { margin-bottom: 4px; }
+
+/* Media */
+.product-desc img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto !important;
+  margin: 10px auto;
+  border-radius: 8px;
+}
+.product-desc iframe, .product-desc video {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 0;
+}
+
+/* Tables: scroll sideways instead of squashing */
+.pd-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 12px 0;
+  border: 1px solid #e8eef3;
+  border-radius: 8px;
+}
+.product-desc table {
+  border-collapse: collapse;
+  width: max-content;          /* natural width; the wrapper scrolls */
+  min-width: 100%;
+  font-size: 12px;
+}
+.product-desc th, .product-desc td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eef2f6;
+  text-align: left;
+  vertical-align: top;
+  min-width: 90px;
+}
+.product-desc th { background: #f3f7fa; font-weight: 700; }
+
+/* Multi-column page-builder layouts: stack on mobile */
+.product-desc .wp-block-columns,
+.product-desc [class*="columns"],
+.product-desc [class*="row"] {
+  display: block !important;
+}
+.product-desc .wp-block-column,
+.product-desc [class*="column"],
+.product-desc [class*="col-"] {
+  display: block !important;
+  width: 100% !important;
+  flex-basis: auto !important;
+  margin: 0 0 14px !important;
+}
