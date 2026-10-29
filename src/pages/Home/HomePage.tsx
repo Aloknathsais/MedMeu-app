@@ -279,7 +279,7 @@ const HomePage: React.FC = () => {
               </div>
               <div className="header-actions">
                 <IonIcon icon={searchOutline} className="header-icon" onClick={() => setSearchOpen(true)} />
-                <IonIcon icon={notificationsOutline} className="header-icon" />
+                {/* <IonIcon icon={notificationsOutline} className="header-icon" /> */}
                 <div className="cart-wrap" onClick={() => history.push('/tabs/cart')}>
                   <IonIcon icon={cartOutline} className="header-icon" />
                   {state.cartCount > 0 && <IonBadge className="cart-badge">{state.cartCount}</IonBadge>}
