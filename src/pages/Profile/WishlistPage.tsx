@@ -11,7 +11,7 @@ import { wishlistService, WishlistItem } from '../../services/wishlist.service';
 
 const WishlistPage: React.FC = () => {
   const history = useHistory();
-  const { addToCart: persistAddToCart } = useApp();
+  const { addToCart: persistAddToCart, dispatch } = useApp();
 
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,12 @@ const WishlistPage: React.FC = () => {
   const remove = (productId: string) => {
     wishlistService
       .remove(productId)
-      .then((data) => setItems(data.items))
+      .then((data) => {
+        setItems(data.items);
+        dispatch({ type: 'SET_WISHLIST', payload: data.items.map(item => item.id) });
+        setToastMsg('Removed from wishlist!');
+        setShowToast(true);
+      })
       .catch((err) => {
         console.error('Failed to remove from wishlist', err);
         setToastMsg('Could not remove item — please try again.');
@@ -158,7 +163,11 @@ const WishlistPage: React.FC = () => {
         duration={1500}
         onDidDismiss={() => setShowToast(false)}
         position="bottom"
-        color={toastMsg === 'Added to cart!' ? 'success' : 'danger'}
+        color={
+          toastMsg === 'Added to cart!' || toastMsg === 'Removed from wishlist!'
+            ? 'success'
+            : 'danger'
+        }
       />
     </IonPage>
   );

@@ -87,6 +87,7 @@ const ProductsPage: React.FC = () => {
   const [cartToastMsg, setCartToastMsg] = useState('');
   const [showCartToast, setShowCartToast] = useState(false);
   const [showWishlistToast, setShowWishlistToast] = useState(false);
+  const [wishlistToastMsg, setWishlistToastMsg] = useState('');
 
   const addToCart = (product: UiProduct, e: any) => {
     e.stopPropagation();
@@ -111,7 +112,8 @@ const ProductsPage: React.FC = () => {
     const isWishlisted = state.wishlist.includes(id);
     try {
       await persistToggleWishlist(id);
-      if (!isWishlisted) setShowWishlistToast(true);
+      setWishlistToastMsg(isWishlisted ? 'Removed from wishlist!' : 'Added to wishlist!');
+      setShowWishlistToast(true);
     } catch (err) {
       console.error('Failed to update wishlist', err);
     }
@@ -536,7 +538,7 @@ const ProductsPage: React.FC = () => {
       />
       <IonToast
         isOpen={showWishlistToast}
-        message="Added to wishlist!"
+        message={wishlistToastMsg}
         duration={1500}
         onDidDismiss={() => setShowWishlistToast(false)}
         position="bottom"
