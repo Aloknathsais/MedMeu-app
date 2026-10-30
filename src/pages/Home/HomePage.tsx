@@ -614,7 +614,7 @@ const ProductCard: React.FC<{
           <span className="original-price">₹{product.originalPrice}</span>
         )}
       </div>
-      {!product.inStock ? (
+      {product.price <= 0 ? null : !product.inStock ? (
         <IonChip color="danger" style={{ fontSize: 11, height: 24 }}>Out of Stock</IonChip>
       ) : (
         <IonButton

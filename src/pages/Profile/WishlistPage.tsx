@@ -139,12 +139,14 @@ const WishlistPage: React.FC = () => {
                   <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginBottom: 8 }}>
                     <span style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>₹{item.price}</span>
                   </div>
-                  <IonButton size="small"
-                    disabled={!item.inStock}
-                    onClick={e => { e.stopPropagation(); addToCart(item); }}
-                    style={{ '--border-radius': '8px', height: 30, fontSize: 12 }}>
-                    {item.inStock ? 'Add to Cart' : 'Out of Stock'}
-                  </IonButton>
+                  {item.price > 0 && (
+                    <IonButton size="small"
+                      disabled={!item.inStock}
+                      onClick={e => { e.stopPropagation(); addToCart(item); }}
+                      style={{ '--border-radius': '8px', height: 30, fontSize: 12 }}>
+                      {item.inStock ? 'Add to Cart' : 'Out of Stock'}
+                    </IonButton>
+                  )}
                 </div>
                 <div style={{ position: 'absolute', top: 12, right: 12, cursor: 'pointer' }}
                   onClick={e => { e.stopPropagation(); remove(item.id); }}>

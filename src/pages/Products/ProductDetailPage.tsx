@@ -583,19 +583,21 @@ const ProductDetailPage: React.FC = () => {
           )}
         </div>
 
-        <div style={{ height: 110 }} />
+        <div style={{ height: product.price > 0 ? 110 : 24 }} />
       </IonContent>
 
       {/* Bottom CTA */}
-      <div className="detail-cta">
-        <IonButton expand="block" fill="outline" className="cta-cart" onClick={addToCart} disabled={!product.inStock}>
-          <IonIcon icon={cartOutline} slot="start" />
-          Add to Cart
-        </IonButton>
-        {/* <IonButton expand="block" className="cta-buy" onClick={buyNow} disabled={!product.inStock}>
-          Buy Now
-        </IonButton> */}
-      </div>
+      {product.price > 0 && (
+        <div className="detail-cta">
+          <IonButton expand="block" fill="outline" className="cta-cart" onClick={addToCart} disabled={!product.inStock}>
+            <IonIcon icon={cartOutline} slot="start" />
+            Add to Cart
+          </IonButton>
+          {/* <IonButton expand="block" className="cta-buy" onClick={buyNow} disabled={!product.inStock}>
+            Buy Now
+          </IonButton> */}
+        </div>
+      )}
 
       <IonToast
         isOpen={showToast}

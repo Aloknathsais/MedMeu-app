@@ -416,7 +416,7 @@ const ProductsPage: React.FC = () => {
                     <span className="grid-price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="grid-original">₹{product.originalPrice}</span>}
                   </div>
-                  {product.inStock ? (
+                  {product.price <= 0 ? null : product.inStock ? (
                     <button className="grid-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
                   ) : (
                     <span className="grid-oos">Out of Stock</span>
@@ -441,7 +441,7 @@ const ProductsPage: React.FC = () => {
                     {product.originalPrice > product.price && <span className="original-price">₹{product.originalPrice}</span>}
                     {product.discount > 0 && <span className="list-discount">{product.discount}% OFF</span>}
                   </div>
-                  {product.inStock ? (
+                  {product.price <= 0 ? null : product.inStock ? (
                     <button className="list-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
                   ) : (
                     <span className="list-oos">Out of Stock</span>
