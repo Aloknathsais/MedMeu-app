@@ -7,11 +7,14 @@ import {
 import { heart } from 'ionicons/icons';
 import { useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import ProductCartControl from '../../components/ProductCartControl';
 import { wishlistService, WishlistItem } from '../../services/wishlist.service';
 
 const WishlistPage: React.FC = () => {
   const history = useHistory();
-  const { addToCart: persistAddToCart, dispatch } = useApp();
+  const {
+    state, addToCart: persistAddToCart, updateCartQty: persistCartQty, dispatch,
+  } = useApp();
 
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,27 +66,38 @@ const WishlistPage: React.FC = () => {
       });
   };
 
-  const addToCart = (item: WishlistItem) => {
-    persistAddToCart({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      image: item.image,
-      quantity: 1,
-      unit: item.unit,
-      weight: item.weight,
-    })
-      .then(() => {
-        setToastMsg('Added to cart!');
-        setShowToast(true);
-      })
-      .catch((err) => {
-        console.error('Failed to add to cart', err);
-        const message =
-          err?.response?.data?.message || 'Could not add to cart — please try again.';
-        setToastMsg(message);
-        setShowToast(true);
+  const addToCart = async (item: WishlistItem): Promise<void> => {
+    try {
+      await persistAddToCart({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        quantity: 1,
+        unit: item.unit,
+        weight: item.weight,
       });
+      setToastMsg('Added to cart!');
+      setShowToast(true);
+    } catch (err) {
+      console.error('Failed to add to cart', err);
+      const message =
+        err?.response?.data?.message || 'Could not add to cart — please try again.';
+      setToastMsg(message);
+      setShowToast(true);
+    }
+  };
+
+  const updateCartQuantity = async (productId: string, quantity: number): Promise<void> => {
+    try {
+      await persistCartQty(productId, quantity);
+    } catch (err) {
+      console.error('Failed to update cart quantity', err);
+      const message =
+        err?.response?.data?.message || 'Could not update cart — please try again.';
+      setToastMsg(message);
+      setShowToast(true);
+    }
   };
 
   return (
@@ -140,12 +154,13 @@ const WishlistPage: React.FC = () => {
                     <span style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e' }}>₹{item.price}</span>
                   </div>
                   {item.price > 0 && (
-                    <IonButton size="small"
-                      disabled={!item.inStock}
-                      onClick={e => { e.stopPropagation(); addToCart(item); }}
-                      style={{ '--border-radius': '8px', height: 30, fontSize: 12 }}>
-                      {item.inStock ? 'Add to Cart' : 'Out of Stock'}
-                    </IonButton>
+                    <ProductCartControl
+                      ready={!state.isAuthenticated || state.cartReady}
+                      quantity={state.cartItems.find(cartItem => cartItem.id === item.id)?.quantity ?? 0}
+                      inStock={item.inStock}
+                      onAdd={() => addToCart(item)}
+                      onQuantityChange={quantity => updateCartQuantity(item.id, quantity)}
+                    />
                   )}
                 </div>
                 <div style={{ position: 'absolute', top: 12, right: 12, cursor: 'pointer' }}

@@ -12,6 +12,7 @@ import { useHistory, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { productsService, UiProduct } from '../../services/products.service';
 import { categoriesService, CategoryTree } from '../../services/categories.service';
+import ProductCartControl from '../../components/ProductCartControl';
 import './Products.css';
 
 const sortOptions = [
@@ -34,7 +35,10 @@ const PER_PAGE = 20;
 const ProductsPage: React.FC = () => {
   const history = useHistory();
   const location = useLocation();
-  const { state, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
+  const {
+    state, addToCart: persistAddToCart, updateCartQty: persistCartQty,
+    loadWishlist, toggleWishlist: persistToggleWishlist,
+  } = useApp();
 
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('popular');
@@ -89,22 +93,38 @@ const ProductsPage: React.FC = () => {
   const [showWishlistToast, setShowWishlistToast] = useState(false);
   const [wishlistToastMsg, setWishlistToastMsg] = useState('');
 
-  const addToCart = (product: UiProduct, e: any) => {
-    e.stopPropagation();
-    persistAddToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1, unit: product.unit, weight: product.weight })
-      .then(() => {
-        setCartToastMsg('Added to cart!');
-        setShowCartToast(true);
-      })
-      .catch((err) => {
-        console.error('Failed to add to cart', err);
-        // Real WooCommerce cart now — a failure can be a genuine
-        // rejection (e.g. out of stock), not just a network hiccup.
-        const message =
-          err?.response?.data?.message || 'Could not add to cart — please try again.';
-        setCartToastMsg(message);
-        setShowCartToast(true);
+  const addToCart = async (product: UiProduct): Promise<void> => {
+    try {
+      await persistAddToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+        unit: product.unit,
+        weight: product.weight,
       });
+      setCartToastMsg('Added to cart!');
+      setShowCartToast(true);
+    } catch (err) {
+      console.error('Failed to add to cart', err);
+      const message =
+        err?.response?.data?.message || 'Could not add to cart — please try again.';
+      setCartToastMsg(message);
+      setShowCartToast(true);
+    }
+  };
+
+  const updateCartQuantity = async (id: string, quantity: number): Promise<void> => {
+    try {
+      await persistCartQty(id, quantity);
+    } catch (err) {
+      console.error('Failed to update cart quantity', err);
+      const message =
+        err?.response?.data?.message || 'Could not update cart — please try again.';
+      setCartToastMsg(message);
+      setShowCartToast(true);
+    }
   };
 
   const toggleWishlist = async (id: string, e: any) => {
@@ -416,10 +436,15 @@ const ProductsPage: React.FC = () => {
                     <span className="grid-price">₹{product.price}</span>
                     {product.originalPrice > product.price && <span className="grid-original">₹{product.originalPrice}</span>}
                   </div>
-                  {product.price <= 0 ? null : product.inStock ? (
-                    <button className="grid-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
-                  ) : (
-                    <span className="grid-oos">Out of Stock</span>
+                  {product.price > 0 && (
+                    <ProductCartControl
+                      ready={!state.isAuthenticated || state.cartReady}
+                      quantity={state.cartItems.find(item => item.id === product.id)?.quantity ?? 0}
+                      inStock={product.inStock}
+                      maxQuantity={product.stockQuantity}
+                      onAdd={() => addToCart(product)}
+                      onQuantityChange={quantity => updateCartQuantity(product.id, quantity)}
+                    />
                   )}
                 </div>
               </div>
@@ -441,10 +466,16 @@ const ProductsPage: React.FC = () => {
                     {product.originalPrice > product.price && <span className="original-price">₹{product.originalPrice}</span>}
                     {product.discount > 0 && <span className="list-discount">{product.discount}% OFF</span>}
                   </div>
-                  {product.price <= 0 ? null : product.inStock ? (
-                    <button className="list-add-btn" onClick={e => addToCart(product, e)}>Add to Cart</button>
-                  ) : (
-                    <span className="list-oos">Out of Stock</span>
+                  {product.price > 0 && (
+                    <ProductCartControl
+                      className="cart-control-list"
+                      ready={!state.isAuthenticated || state.cartReady}
+                      quantity={state.cartItems.find(item => item.id === product.id)?.quantity ?? 0}
+                      inStock={product.inStock}
+                      maxQuantity={product.stockQuantity}
+                      onAdd={() => addToCart(product)}
+                      onQuantityChange={quantity => updateCartQuantity(product.id, quantity)}
+                    />
                   )}
                 </div>
                 <div className="list-wishlist" onClick={e => void toggleWishlist(product.id, e)}>

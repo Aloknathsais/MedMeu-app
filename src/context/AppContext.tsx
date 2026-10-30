@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useReducer, ReactNode } from 'react';
 import { cartService } from '../services/cart.service';
 import { wishlistService } from '../services/wishlist.service';
 
@@ -50,6 +50,7 @@ interface AppState {
   user: User | null;
   isAuthenticated: boolean;
   cartItems: CartItem[];
+  cartReady: boolean;
   wishlist: string[];
   cartCount: number;
 }
@@ -62,6 +63,7 @@ type Action =
   | { type: 'REMOVE_FROM_CART'; payload: string }
   | { type: 'UPDATE_CART_QTY'; payload: { id: string; quantity: number } }
   | { type: 'SET_CART'; payload: CartItem[] }
+  | { type: 'SET_CART_READY' }
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_WISHLIST'; payload: string }
   | { type: 'SET_WISHLIST'; payload: string[] };
@@ -86,6 +88,7 @@ const initialState: AppState = {
   user: getCachedUser(),
   isAuthenticated: !!localStorage.getItem('medmeu_token'),
   cartItems: [],
+  cartReady: false,
   wishlist: [],
   cartCount: 0,
 };
@@ -100,6 +103,7 @@ function reducer(state: AppState, action: Action): AppState {
         user: null,
         isAuthenticated: false,
         cartItems: [],
+        cartReady: false,
         wishlist: [],
         cartCount: 0,
       };
@@ -130,9 +134,15 @@ function reducer(state: AppState, action: Action): AppState {
     // call, so the client never shows a state the server doesn't agree with.
     case 'SET_CART': {
       const items = action.payload;
-      return { ...state, cartItems: items, cartCount: items.reduce((a, i) => a + i.quantity, 0) };
+      return {
+        ...state,
+        cartItems: items,
+        cartReady: true,
+        cartCount: items.reduce((a, i) => a + i.quantity, 0),
+      };
     }
-    case 'CLEAR_CART': return { ...state, cartItems: [], cartCount: 0 };
+    case 'SET_CART_READY': return { ...state, cartReady: true };
+    case 'CLEAR_CART': return { ...state, cartItems: [], cartReady: true, cartCount: 0 };
     case 'TOGGLE_WISHLIST': {
       // Kept for compatibility, but no longer the recommended path —
       // see toggleWishlist() below, which persists to the real KLB
@@ -175,6 +185,26 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  useEffect(() => {
+    if (!state.isAuthenticated) return;
+
+    let active = true;
+    cartService.list()
+      .then(items => {
+        if (active) dispatch({ type: 'SET_CART', payload: items });
+      })
+      .catch(err => {
+        if (active) {
+          console.error('Failed to load cart', err);
+          dispatch({ type: 'SET_CART_READY' });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [state.isAuthenticated]);
 
   // All five of these follow the same shape: call the backend first,
   // then dispatch SET_CART with what the server actually confirmed —

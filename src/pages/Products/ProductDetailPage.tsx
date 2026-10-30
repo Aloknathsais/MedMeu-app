@@ -12,6 +12,7 @@ import { useParams, useHistory } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { productsService, UiProduct } from '../../services/products.service';
 import { reviewsService, ProductReview } from '../../services/reviews.service';
+import ProductCartControl from '../../components/ProductCartControl';
 import {
   QUANTITY_PRICING_TIERS,
   getActiveTier,
@@ -23,7 +24,10 @@ import ProductDescription from '../../components/ProductDescription';
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
-  const { state, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
+  const {
+    state, addToCart: persistAddToCart, updateCartQty: persistCartQty,
+    loadWishlist, toggleWishlist: persistToggleWishlist,
+  } = useApp();
   const [qty, setQty] = useState(1);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
@@ -189,6 +193,9 @@ const ProductDetailPage: React.FC = () => {
   const inWishlist = state.wishlist.includes(product.id);
   const images = product.images; // real gallery from WooCommerce — no more 3x duplicate placeholder
   const maxQty = product.stockQuantity ?? 99;
+  const cartQuantity = state.cartItems.find(item => item.id === product.id)?.quantity ?? 0;
+  const canConfigureQuantity =
+    (!state.isAuthenticated || state.cartReady) && cartQuantity === 0;
   const activeTier = getActiveTier(qty);
 
   const goToSlide = (index: number) => {
@@ -247,6 +254,18 @@ const ProductDetailPage: React.FC = () => {
       setToastMsg(message);
       setShowToast(true);
       return false;
+    }
+  };
+
+  const updateCartQuantity = async (quantity: number): Promise<void> => {
+    try {
+      await persistCartQty(product.id, quantity);
+    } catch (err) {
+      console.error('Failed to update cart quantity', err);
+      const message =
+        err?.response?.data?.message || 'Could not update cart — please try again.';
+      setToastMsg(message);
+      setShowToast(true);
     }
   };
 
@@ -369,32 +388,34 @@ const ProductDetailPage: React.FC = () => {
             <span className="detail-reviews">{product.reviews.toLocaleString()} ratings</span>
           </div>
 
-          <div className="tier-pricing-card">
-            {QUANTITY_PRICING_TIERS.map((tier) => {
-              const tierPrice = getTierUnitPrice(product.price, tier.discountPercent);
-              const isActive = activeTier.minQty === tier.minQty;
-              return (
-                <button
-                  key={tier.minQty}
-                  className={`tier-pricing-row ${isActive ? 'active' : ''}`}
-                  onClick={() => setQty(Math.min(maxQty, tier.minQty))}
-                >
-                  <span className="tier-pricing-radio">
-                    <span className={`tier-pricing-radio-dot ${isActive ? 'active' : ''}`} />
-                  </span>
-                  <span className="tier-pricing-label">{tier.label}</span>
-                  <span className="tier-pricing-price">
-                    {tier.discountPercent > 0 && (
-                      <span className="tier-pricing-price-original">
-                        ₹{product.price}
-                      </span>
-                    )}
-                    ₹{tierPrice}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {canConfigureQuantity && (
+            <div className="tier-pricing-card">
+              {QUANTITY_PRICING_TIERS.map((tier) => {
+                const tierPrice = getTierUnitPrice(product.price, tier.discountPercent);
+                const isActive = activeTier.minQty === tier.minQty;
+                return (
+                  <button
+                    key={tier.minQty}
+                    className={`tier-pricing-row ${isActive ? 'active' : ''}`}
+                    onClick={() => setQty(Math.min(maxQty, tier.minQty))}
+                  >
+                    <span className="tier-pricing-radio">
+                      <span className={`tier-pricing-radio-dot ${isActive ? 'active' : ''}`} />
+                    </span>
+                    <span className="tier-pricing-label">{tier.label}</span>
+                    <span className="tier-pricing-price">
+                      {tier.discountPercent > 0 && (
+                        <span className="tier-pricing-price-original">
+                          ₹{product.price}
+                        </span>
+                      )}
+                      ₹{tierPrice}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="detail-price-card">
             <div className="detail-price-row">
@@ -410,14 +431,16 @@ const ProductDetailPage: React.FC = () => {
           </div>
 
           {/* Qty selector — capped at real stock quantity when WooCommerce is tracking it */}
-          <div className="qty-row">
-            <span className="qty-label">Quantity</span>
-            <div className="qty-controls">
-              <button className="qty-btn" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
-              <span className="qty-val">{qty}</span>
-              <button className="qty-btn" onClick={() => setQty(Math.min(maxQty, qty + 1))}>+</button>
+          {canConfigureQuantity && (
+            <div className="qty-row">
+              <span className="qty-label">Quantity</span>
+              <div className="qty-controls">
+                <button className="qty-btn" onClick={() => setQty(Math.max(1, qty - 1))}>−</button>
+                <span className="qty-val">{qty}</span>
+                <button className="qty-btn" onClick={() => setQty(Math.min(maxQty, qty + 1))}>+</button>
+              </div>
             </div>
-          </div>
+          )}
           {product.stockQuantity != null && product.stockQuantity <= 10 && (
             <p style={{ fontSize: 12, color: '#C62828', margin: '-8px 0 12px' }}>
               Only {product.stockQuantity} left in stock
@@ -589,10 +612,15 @@ const ProductDetailPage: React.FC = () => {
       {/* Bottom CTA */}
       {product.price > 0 && (
         <div className="detail-cta">
-          <IonButton expand="block" fill="outline" className="cta-cart" onClick={addToCart} disabled={!product.inStock}>
-            <IonIcon icon={cartOutline} slot="start" />
-            Add to Cart
-          </IonButton>
+          <ProductCartControl
+            className="cart-control-detail"
+            ready={!state.isAuthenticated || state.cartReady}
+            quantity={cartQuantity}
+            inStock={product.inStock}
+            maxQuantity={maxQty}
+            onAdd={async () => { await addToCart(); }}
+            onQuantityChange={updateCartQuantity}
+          />
           {/* <IonButton expand="block" className="cta-buy" onClick={buyNow} disabled={!product.inStock}>
             Buy Now
           </IonButton> */}
@@ -605,7 +633,7 @@ const ProductDetailPage: React.FC = () => {
         duration={1500}
         onDidDismiss={() => setShowToast(false)}
         position="bottom"
-        color="success"
+        color={toastMsg === 'Added to cart!' ? 'success' : 'danger'}
       />
       <IonToast
         isOpen={showWishlistToast}

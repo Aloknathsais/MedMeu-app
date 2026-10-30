@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   IonPage, IonContent, IonHeader, IonToolbar,
   IonBadge, IonIcon, IonRefresher, IonRefresherContent,
-  IonButton, IonChip, IonMenuButton, IonToast,
+  IonButton, IonMenuButton, IonToast,
 } from '@ionic/react';
 import {
   cartOutline, notificationsOutline, heartOutline, heart,
@@ -21,12 +21,16 @@ import { categoriesService, UiCategory } from '../../services/categories.service
 import { authService } from '../../services/auth.service';
 import { googleReviewsService, GoogleReview, GoogleReviewsData } from '../../services/googleReviews.service';
 import { bannersService, Banner } from '../../services/banners.service';
+import ProductCartControl from '../../components/ProductCartControl';
 import Logo from '../../assets/logo.png';
 import './Home.css';
 
 const HomePage: React.FC = () => {
   const history = useHistory();
-  const { state, dispatch, addToCart: persistAddToCart, loadWishlist, toggleWishlist: persistToggleWishlist } = useApp();
+  const {
+    state, dispatch, addToCart: persistAddToCart, updateCartQty: persistCartQty,
+    loadWishlist, toggleWishlist: persistToggleWishlist,
+  } = useApp();
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeBanner, setActiveBanner] = useState(0);
@@ -178,31 +182,38 @@ const HomePage: React.FC = () => {
   const [showWishlistToast, setShowWishlistToast] = useState(false);
   const [wishlistToastMsg, setWishlistToastMsg] = useState('');
 
-  const addToCart = (product: UiProduct) => {
-    persistAddToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: 1,
-      unit: product.unit,
-      weight: product.weight,
-    })
-      .then(() => {
-        setCartToastMsg('Added to cart!');
-        setShowCartToast(true);
-      })
-      .catch((err) => {
-        console.error('Failed to add to cart', err);
-        // Now backed by the real WooCommerce cart (see cart.service.js /
-        // medmeu-app-cart-api.php), so a failure here can be a genuine
-        // rejection — e.g. out of stock — not just a network hiccup.
-        // Surface WooCommerce's actual message when there is one.
-        const message =
-          err?.response?.data?.message || 'Could not add to cart — please try again.';
-        setCartToastMsg(message);
-        setShowCartToast(true);
+  const addToCart = async (product: UiProduct): Promise<void> => {
+    try {
+      await persistAddToCart({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity: 1,
+        unit: product.unit,
+        weight: product.weight,
       });
+      setCartToastMsg('Added to cart!');
+      setShowCartToast(true);
+    } catch (err) {
+      console.error('Failed to add to cart', err);
+      const message =
+        err?.response?.data?.message || 'Could not add to cart — please try again.';
+      setCartToastMsg(message);
+      setShowCartToast(true);
+    }
+  };
+
+  const updateCartQuantity = async (id: string, quantity: number): Promise<void> => {
+    try {
+      await persistCartQty(id, quantity);
+    } catch (err) {
+      console.error('Failed to update cart quantity', err);
+      const message =
+        err?.response?.data?.message || 'Could not update cart — please try again.';
+      setCartToastMsg(message);
+      setShowCartToast(true);
+    }
   };
 
   const toggleWishlist = async (id: string) => {
@@ -331,10 +342,13 @@ const HomePage: React.FC = () => {
                       <ProductCard
                         key={product.id}
                         product={product}
+                        cartReady={!state.isAuthenticated || state.cartReady}
+                        cartQuantity={state.cartItems.find(item => item.id === product.id)?.quantity ?? 0}
                         inWishlist={state.wishlist.includes(product.id)}
                         onCardClick={() => history.push(`/product/${product.id}`)}
                         onWishlist={() => toggleWishlist(product.id)}
                         onAddToCart={() => addToCart(product)}
+                        onQuantityChange={quantity => updateCartQuantity(product.id, quantity)}
                       />
                     ))}
                   </div>
@@ -450,10 +464,13 @@ const HomePage: React.FC = () => {
                   <ProductCard
                     key={product.id}
                     product={product}
+                    cartReady={!state.isAuthenticated || state.cartReady}
+                    cartQuantity={state.cartItems.find(item => item.id === product.id)?.quantity ?? 0}
                     inWishlist={state.wishlist.includes(product.id)}
                     onCardClick={() => history.push(`/product/${product.id}`)}
                     onWishlist={() => toggleWishlist(product.id)}
                     onAddToCart={() => addToCart(product)}
+                    onQuantityChange={quantity => updateCartQuantity(product.id, quantity)}
                   />
                 ))}
               </div>
@@ -582,12 +599,18 @@ const ProductsSkeleton: React.FC = () => (
 /* ── Reusable product card ── */
 const ProductCard: React.FC<{
   product: UiProduct;
+  cartReady: boolean;
+  cartQuantity: number;
   badge?: { label: string; type: 'new' | 'bestseller' };
   inWishlist: boolean;
   onCardClick: () => void;
   onWishlist: () => void;
-  onAddToCart: () => void;
-}> = ({ product, badge, inWishlist, onCardClick, onWishlist, onAddToCart }) => (
+  onAddToCart: () => Promise<void>;
+  onQuantityChange: (quantity: number) => Promise<void>;
+}> = ({
+  product, cartReady, cartQuantity, badge, inWishlist, onCardClick, onWishlist,
+  onAddToCart, onQuantityChange,
+}) => (
   <div className="product-card" onClick={onCardClick}>
     <div className="product-img-wrap">
       <img src={product.image} alt={product.name} loading="lazy" />
@@ -614,17 +637,15 @@ const ProductCard: React.FC<{
           <span className="original-price">₹{product.originalPrice}</span>
         )}
       </div>
-      {product.price <= 0 ? null : !product.inStock ? (
-        <IonChip color="danger" style={{ fontSize: 11, height: 24 }}>Out of Stock</IonChip>
-      ) : (
-        <IonButton
-          size="small"
-          expand="block"
-          className="add-btn"
-          onClick={e => { e.stopPropagation(); onAddToCart(); }}
-        >
-          Add to Cart
-        </IonButton>
+      {product.price > 0 && (
+        <ProductCartControl
+          quantity={cartQuantity}
+          ready={cartReady}
+          inStock={product.inStock}
+          maxQuantity={product.stockQuantity}
+          onAdd={onAddToCart}
+          onQuantityChange={onQuantityChange}
+        />
       )}
     </div>
   </div>
